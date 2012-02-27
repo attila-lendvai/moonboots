@@ -1,11 +1,11 @@
 
-(defun jos/trim-string (str)
+(defun lua/trim-string (str)
   (while (string-match "\\`\n+\\|^\\s-+\\|\\s-+$\\|\n+\\'"
                        str)
     (setq str (replace-match "" t t str)))
   str)
 
-(defun jos/constant ()
+(defun lua/constant ()
   (interactive)
   (re-search-forward "^#define[ \t]+\\([_a-zA-Z0-9]+\\)[ \t]+")
   (let ((name (buffer-substring-no-properties (match-beginning 1) (match-end 1))))
@@ -16,7 +16,7 @@
     (insert ")")
     (insert "\t\t\t// ")))
 
-(global-set-key (kbd "C-\\") 'jos/constant)
+(global-set-key (kbd "C-\\") 'lua/constant)
 
 
 
@@ -29,8 +29,8 @@
 
 
 
-(defun jos/map-type (c-type &optional pointer? result-type-length)
-  (let ((match (assoc (jos/trim-string c-type)
+(defun lua/map-type (c-type &optional pointer? result-type-length)
+  (let ((match (assoc (lua/trim-string c-type)
                       '(("BYTE" "unsigned-char")
                         ("DWORD" "unsigned-int")
                         ("ULONG" "unsigned-long")
@@ -40,7 +40,7 @@
                         ("USHORT" "unsigned-short")
                         ("void" "void")))))
     (unless match
-      (error "jos/map-type: unable to match %s" c-type))
+      (error "lua/map-type: unable to match %s" c-type))
     (let ((mapped-type (second match)))
       (cond
         (result-type-length
@@ -52,7 +52,7 @@
         (t
          mapped-type)))))
 
-(defun jos/function ()
+(defun lua/function ()
   (interactive)
   (re-search-forward "^\\([_a-zA-Z0-9]+\\)[ \t]+CTOS_\\([_a-zA-Z0-9]*\\)[ \t]*(\\(.*\\));")
   (goto-char (match-beginning 0))
@@ -63,7 +63,7 @@
           (args (match-value 3)))
       (delete-region (match-beginning 0) (match-end 0))
       (insert "(")
-      (insert (jos/map-type return-type))
+      (insert (lua/map-type return-type))
       (insert " ")
       (insert name)
       (unless (string= args "void")
@@ -79,11 +79,11 @@
                 ((string-match "[ \t]*\\(.*?\\)\\([*]\\)[ \t]*[_a-zA-Z0-9]+\\(\\[\\([0-9]*\\)\\]\\)?" entry)
                  (let ((type (match-value 1))
                        (result-type-length (match-value 4)))
-                   (insert (jos/map-type type t result-type-length))))
+                   (insert (lua/map-type type t result-type-length))))
                 ((string-match "[ \t]*\\(.*?\\)[ \t][_a-zA-Z0-9]+\\(\\[\\([0-9]*\\)\\]\\)?" entry)
                  (let ((type (match-value 1))
                        (result-type-length (match-value 3)))
-                   (insert (jos/map-type type nil result-type-length)))))))))
+                   (insert (lua/map-type type nil result-type-length)))))))))
       (insert ")"))))
 
-(global-set-key (kbd "C-\\") 'jos/function)
+(global-set-key (kbd "C-\\") 'lua/function)

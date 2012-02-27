@@ -1,4 +1,7 @@
-;; -*- mode: lua -*-
+local ctos = require "ctosapi"
 
-local jos = require 'josapi'
+ctos.LCDTPrintXY(1, 3, "hello lua")
+ctos.KBDGet()
 
+
+-- warning: the last character of this file will be overwritten, so keep this comment here...
