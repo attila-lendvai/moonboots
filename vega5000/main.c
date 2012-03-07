@@ -96,6 +96,8 @@ main(void)
         printLuaErrorAndDie(L, "running main.lua");
     }
 
+    CTOS_LCDTClearDisplay();
+
     logg("Cleaning up...");
     lua_pop(L, 1);  // Take the returned value out of the stack
     lua_close(L);   // Cya, Lua

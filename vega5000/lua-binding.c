@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -6,6 +8,36 @@
 #include "ctosapi.h"
 
 /// TODO: comments marked with three /// means that it's not converted yet
+
+static const char checkchar(lua_State *L, int narg)
+{
+    const char *charstr = luaL_checkstring(L, narg);
+    if (strlen(charstr) != 1)
+        luaL_argerror(L, 1, "char args must be strings of length 1");
+    return *charstr;
+}
+
+char digit_to_hexa_char(unsigned char digit)
+{
+    if (digit > 15)
+        return '?';
+    else if (digit < 10)
+        return '0' + digit;
+    else
+        return 'a' + (digit - 10);
+}
+
+void
+bytes_to_hexa_string(unsigned char *bytes, unsigned int count, char *result)
+{
+    for (int i = 0; i < count; i++)
+    {
+        unsigned char byte = bytes[i];
+        result[i * 2] = digit_to_hexa_char((byte >> 4) & 0xf);
+        result[i * 2 + 1] = digit_to_hexa_char(byte & 0xf);
+    }
+    result[(2 * count)] = 0;
+}
 
 typedef struct luaL_Cst {
 	const char* name;
@@ -667,11 +699,25 @@ static luaL_Cst ctosapi_constants[] = {
 };
 
 
+// functions
+
 #define BINDING(name) static int lua__##name(lua_State* L)
+
+//USHORT CTOS_GetSerialNumber(BYTE baBuf[16]);
+BINDING(CTOS_GetSerialNumber)
+{
+    BYTE serial[16];
+    char serial_as_string[sizeof(serial) * 2 + 1];
+    USHORT result = CTOS_GetSerialNumber(serial);
+    bytes_to_hexa_string(serial, sizeof(serial), serial_as_string);
+
+    lua_pushstring(L, serial_as_string);
+    lua_pushnumber(L, result);
+    return 2;
+}
 
 /*
 
-USHORT CTOS_GetSerialNumber(BYTE baBuf[16]);
 USHORT CTOS_GetSystemInfo(BYTE bID, BYTE baBuf[17]);
 USHORT CTOS_GetKeyHash(BYTE bKeyIndex, BYTE* baHash);
 
@@ -1298,13 +1344,24 @@ BINDING(CTOS_LCDTGotoXY)
     return 1;
 }
 
-///USHORT CTOS_LCDTWhereX(void);
-///USHORT CTOS_LCDTWhereY(void);
+//USHORT CTOS_LCDTWhereX(void);
+BINDING(CTOS_LCDTWhereX)
+{
+    lua_pushnumber(L, CTOS_LCDTWhereX());
+    return 1;
+}
+
+//USHORT CTOS_LCDTWhereY(void);
+BINDING(CTOS_LCDTWhereY)
+{
+    lua_pushnumber(L, CTOS_LCDTWhereY());
+    return 1;
+}
 
 //USHORT CTOS_LCDTPrint(UCHAR* sBuf);
 BINDING(CTOS_LCDTPrint)
 {
-    const char *message = luaL_checkstring(L, 1);
+    const char *message = luaL_optstring(L, 1, "nil");
     lua_pushnumber(L, CTOS_LCDTPrint((char*)message));
     return 1;
 }
@@ -1314,13 +1371,28 @@ BINDING(CTOS_LCDTPrintXY)
 {
     USHORT x = luaL_checknumber(L, 1);
     USHORT y = luaL_checknumber(L, 2);
-    const char *message = luaL_checkstring(L, 3);
+    const char *message = luaL_optstring(L, 3, "nil");
     lua_pushnumber(L, CTOS_LCDTPrintXY(x, y, (char*)message));
     return 1;
 }
 
-///USHORT CTOS_LCDTPutch(UCHAR ch);
-///USHORT CTOS_LCDTPutchXY (USHORT usX, USHORT usY, UCHAR bChar);
+//USHORT CTOS_LCDTPutch(UCHAR ch);
+BINDING(CTOS_LCDTPutch)
+{
+    const char ch = checkchar(L, 1);
+    lua_pushnumber(L, CTOS_LCDTPutch(ch));
+    return 1;
+}
+
+//USHORT CTOS_LCDTPutchXY (USHORT usX, USHORT usY, UCHAR bChar);
+BINDING(CTOS_LCDTPutchXY)
+{
+    USHORT x = luaL_checknumber(L, 1);
+    USHORT y = luaL_checknumber(L, 2);
+    const char ch = checkchar(L, 1);
+    lua_pushnumber(L, CTOS_LCDTPutchXY(x, y, ch));
+    return 1;
+}
 
 //USHORT CTOS_LCDTClear2EOL(void);
 BINDING(CTOS_LCDTClear2EOL)
@@ -1329,9 +1401,14 @@ BINDING(CTOS_LCDTClear2EOL)
     return 1;
 }
 
-/*
+//USHORT CTOS_LCDTSetReverse(BOOL boReverse);
+BINDING(CTOS_LCDTSetReverse)
+{
+    lua_pushnumber(L, CTOS_LCDTSetReverse(lua_isboolean(L, 1)));
+    return 1;
+}
 
-USHORT CTOS_LCDTSetReverse(BOOL boReverse);
+/*
 USHORT CTOS_LCDTSelectFontSize(USHORT usFontSize);
 USHORT CTOS_LCDTSetASCIIVerticalOffset(BOOL fVDirection, BYTE bVOffect);
 USHORT CTOS_LCDTSetASCIIHorizontalOffset(BOOL fHDirection, BYTE bHOffect);
@@ -1355,20 +1432,67 @@ USHORT CTOS_UIKeypad(USHORT usX, USHORT usY, STR *pcaKeyboardLayout[], UCHAR ucC
 //USHORT CTOS_KBDGet(BYTE* pbKey);
 BINDING(CTOS_KBDGet)
 {
-    BYTE key;
+    BYTE key = 0;
     USHORT result = CTOS_KBDGet(&key);
     lua_pushnumber(L, key);
     lua_pushnumber(L, result);
     return 2;
 }
 
+//USHORT CTOS_KBDHit(BYTE* pbKey);
+BINDING(CTOS_KBDHit)
+{
+    BYTE key;
+    USHORT result = CTOS_KBDHit(&key);
+    lua_pushnumber(L, key);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_KBDSetSound(BYTE bOnOff);
+BINDING(CTOS_KBDSetSound)
+{
+    lua_pushnumber(L, CTOS_KBDSetSound(lua_isboolean(L, 1)));
+    return 1;
+}
+
+//USHORT CTOS_KBDSetFrequence(USHORT usFreq, USHORT usDuration);
+BINDING(CTOS_KBDSetFrequence)
+{
+    lua_pushnumber(L, CTOS_KBDSetFrequence(luaL_checknumber(L, 1),
+                                           luaL_checknumber(L, 2)));
+    return 1;
+}
+
+
+//USHORT CTOS_KBDInKey(BOOL* pboIsKeyTriggle);
+BINDING(CTOS_KBDInKey)
+{
+    BOOL value;
+    USHORT result = CTOS_KBDInKey(&value);
+    lua_pushboolean(L, value);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_KBDInKeyCheck(BYTE *pbKey);
+BINDING(CTOS_KBDInKeyCheck)
+{
+    BYTE key;
+    USHORT result = CTOS_KBDInKeyCheck(&key);
+    lua_pushnumber(L, key);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_KBDSetResetEnable(BOOL boIsEnable);
+BINDING(CTOS_KBDSetResetEnable)
+{
+    lua_pushnumber(L, CTOS_KBDSetResetEnable(lua_isboolean(L, 1)));
+    return 1;
+}
+
 /*
-USHORT CTOS_KBDHit(BYTE* pbKey);
-USHORT CTOS_KBDSetSound(BYTE bOnOff);
-USHORT CTOS_KBDSetFrequence(USHORT usFreq, USHORT usDuration);
-USHORT CTOS_KBDInKey(BOOL* pboIsKeyTriggle);
-USHORT CTOS_KBDInKeyCheck(BYTE *pbKey);
-USHORT CTOS_KBDSetResetEnable(BOOL boIsEnable);
 
 //=============================================================================================================================
 //
@@ -1501,30 +1625,126 @@ USHORT CTOS_MSRGetLastErr (BYTE* baTk1Err, BYTE* baTk2Err, BYTE* baTk3Err);
 // Power Saving Functions
 //
 //=============================================================================================================================
-USHORT CTOS_PwrMngDisable(void);
-USHORT CTOS_PwrMngEnable(UCHAR bPwrType,ULONG ulPwrTime);
-USHORT CTOS_PwrMngGetParameter(UCHAR* bPwrEnable, UCHAR* bPwrType, ULONG* ulPwrTime);
-USHORT CTOS_PwrMngSetParameter(UCHAR bPwrEnable, UCHAR bPwrType, ULONG ulPwrTime);
+*/
+
+//USHORT CTOS_PwrMngDisable(void);
+BINDING(CTOS_PwrMngDisable)
+{
+    lua_pushnumber(L, CTOS_PwrMngDisable());
+    return 1;
+}
+
+//USHORT CTOS_PwrMngEnable(UCHAR bPwrType,ULONG ulPwrTime);
+BINDING(CTOS_PwrMngEnable)
+{
+    lua_pushnumber(L, CTOS_PwrMngEnable(luaL_checknumber(L, 1),
+                                        luaL_checknumber(L, 2)));
+    return 1;
+}
+
+//USHORT CTOS_PwrMngGetParameter(UCHAR* bPwrEnable, UCHAR* bPwrType, ULONG* ulPwrTime);
+BINDING(CTOS_PwrMngGetParameter)
+{
+    UCHAR state = 0, type = 0;
+    ULONG time = 0;
+    USHORT result = CTOS_PwrMngGetParameter(&state, &type, &time);
+    lua_pushboolean(L, state);
+    lua_pushnumber(L, type);
+    lua_pushnumber(L, time);
+    lua_pushnumber(L, result);
+    return 4;
+}
+
+//USHORT CTOS_PwrMngSetParameter(UCHAR bPwrEnable, UCHAR bPwrType, ULONG ulPwrTime);
+BINDING(CTOS_PwrMngSetParameter)
+{
+    lua_pushnumber(L, CTOS_PwrMngSetParameter(lua_isboolean   (L, 1),
+                                              luaL_checknumber(L, 2),
+                                              luaL_checknumber(L, 3)));
+    return 1;
+}
  
-USHORT CTOS_PwrMngRegisterCallBack(void *PwrCallBack);
-USHORT CTOS_PwrMngUnRegisterCallBack(void);
-USHORT CTOS_PwrMngSetBusy(void);
-USHORT CTOS_PwrMngClearBusy(void);
-USHORT CTOS_PwrMngGetBusy(BOOL *fBusy);
-USHORT CTOS_PwrMngGetState(UCHAR *bState);
+///USHORT CTOS_PwrMngRegisterCallBack(void *PwrCallBack);
+///USHORT CTOS_PwrMngUnRegisterCallBack(void);
 
+//USHORT CTOS_PwrMngSetBusy(void);
+BINDING(CTOS_PwrMngSetBusy)
+{
+    lua_pushnumber(L, CTOS_PwrMngSetBusy());
+    return 1;
+}
 
-USHORT CTOS_PowerMode(BYTE bMode);
-void CTOS_PowerOff(void);
-void CTOS_SystemReset(void);
-USHORT CTOS_PowerSource(UCHAR* bSrc);
+//USHORT CTOS_PwrMngClearBusy(void);
+BINDING(CTOS_PwrMngClearBusy)
+{
+    lua_pushnumber(L, CTOS_PwrMngClearBusy());
+    return 1;
+}
 
-USHORT CTOS_Get_Battery_Capacity_ByIC(BYTE* bPercentage);
-USHORT CTOS_Get_Battery_Capacity_ByADC(BYTE* bPercentage);
+//USHORT CTOS_PwrMngGetBusy(BOOL *fBusy);
+BINDING(CTOS_PwrMngGetBusy)
+{
+    UCHAR state = 0;
+    USHORT result = CTOS_PwrMngGetBusy(&state);
+    lua_pushboolean(L, state);
+    lua_pushnumber(L, result);
+    return 2;
+}
 
-USHORT CTOS_BatteryGetCapacityByIC(BYTE* bPercentage);
-USHORT CTOS_BatteryGetCapacityByADC(BYTE* bPercentage);
-USHORT CTOS_BatteryReadSN(BYTE* baSN, BYTE* bLen);
+//USHORT CTOS_PwrMngGetState(UCHAR *bState);
+BINDING(CTOS_PwrMngGetState)
+{
+    UCHAR state = 0;
+    USHORT result = CTOS_PwrMngGetState(&state);
+    lua_pushboolean(L, state);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_PowerMode(BYTE bMode);
+BINDING(CTOS_PowerMode)
+{
+    lua_pushnumber(L, CTOS_PowerMode(luaL_checknumber(L, 1)));
+    return 1;
+}
+
+//USHORT CTOS_PowerSource(UCHAR* bSrc);
+BINDING(CTOS_PowerSource)
+{
+    UCHAR source = 0;
+    USHORT result = CTOS_PowerSource(&source);
+    lua_pushnumber(L, source);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_Get_Battery_Capacity_ByIC(BYTE* bPercentage);
+//USHORT CTOS_Get_Battery_Capacity_ByADC(BYTE* bPercentage);
+
+//USHORT CTOS_BatteryGetCapacityByIC(BYTE* bPercentage);
+BINDING(CTOS_BatteryGetCapacityByIC)
+{
+    BYTE capacity = 0;
+    USHORT result = CTOS_BatteryGetCapacityByIC(&capacity);
+    lua_pushnumber(L, capacity);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_BatteryGetCapacityByADC(BYTE* bPercentage);
+BINDING(CTOS_BatteryGetCapacityByADC)
+{
+    BYTE capacity = 0;
+    USHORT result = CTOS_BatteryGetCapacityByADC(&capacity);
+    lua_pushnumber(L, capacity);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+///USHORT CTOS_BatteryReadSN(BYTE* baSN, BYTE* bLen);
+
+/*
+
 //=============================================================================================================================
 //
 // ULDPM Functions
@@ -1542,18 +1762,56 @@ typedef struct
 	BYTE baExeName[25];
 	BYTE RFU[44];
 } CTOS_stCAPInfo;
+*/
 
 /////////// System ///////////
-void CTOS_SystemReset(void);
-void CTOS_PowerOff(void);
-USHORT CTOS_GetSerialNumber(BYTE baBuf[16]);
+
+//void CTOS_PowerOff(void);
+BINDING(CTOS_PowerOff)
+{
+    CTOS_PowerOff();
+    return 0;
+}
+
+//void CTOS_SystemReset(void);
+BINDING(CTOS_SystemReset)
+{
+    CTOS_SystemReset();
+    return 0;
+}
+
+/*
+
 USHORT CTOS_GetSystemInfo(BYTE bID, BYTE baBuf[17]);
 USHORT CTOS_GetSystemInfo_TMS(BYTE baBuf[17]);
 USHORT CTOS_GetKeyHash(BYTE bKeyIndex, BYTE* baHash);
 USHORT CTOS_GetBuringSN(BYTE *baBuringSN);
 USHORT CTOS_SetBuringSN(BYTE *baBuringSN);
-USHORT CTOS_GetFactorySN(BYTE *baFactorySN);
-USHORT CTOS_SetFactorySN(BYTE *baFactorySN);
+*/
+
+//USHORT CTOS_GetFactorySN(BYTE *baFactorySN);
+BINDING(CTOS_GetFactorySN)
+{
+    BYTE serial[16];
+    bzero(serial, sizeof(serial));
+    USHORT result = CTOS_GetFactorySN(serial);
+
+    lua_pushstring(L, serial);
+    lua_pushnumber(L, result);
+    return 2;
+}
+
+//USHORT CTOS_SetFactorySN(BYTE *baFactorySN);
+BINDING(CTOS_SetFactorySN)
+{
+    char serial[16];
+    bzero(serial, sizeof(serial));
+    strncpy(serial, luaL_checkstring(L, 1), sizeof(serial) - 1);
+    lua_pushnumber(L, CTOS_SetFactorySN(serial));
+    return 1;
+}
+
+/*
 USHORT CTOS_SetUSBMode(BYTE baUSBMode);
 void CTOS_UpdateFromMMCI(BYTE *baMMCI, BYTE bShowUI);
 USHORT CTOS_UpdateFromCAPs(BYTE *pCAPData, DWORD dwDataLen, BYTE Indicator);
@@ -1585,12 +1843,45 @@ USHORT CTOS_SealULD(BYTE *baPasswordString, BOOL IsEnable);
 
 static const luaL_Reg ctosapi_functions[] = {
 #define BIND(name) {#name, lua__##name},
+    BIND(CTOS_GetSerialNumber)
     BIND(CTOS_LCDTClearDisplay)
     BIND(CTOS_LCDTGotoXY)
+    BIND(CTOS_LCDTWhereX)
+    BIND(CTOS_LCDTWhereY)
     BIND(CTOS_LCDTPrint)
     BIND(CTOS_LCDTPrintXY)
+    BIND(CTOS_LCDTPutch)
+    BIND(CTOS_LCDTPutchXY)
     BIND(CTOS_LCDTClear2EOL)
+    BIND(CTOS_LCDTSetReverse)
     BIND(CTOS_KBDGet)
+    BIND(CTOS_KBDHit)
+    BIND(CTOS_KBDSetSound)
+    BIND(CTOS_KBDSetFrequence)
+    BIND(CTOS_KBDInKey)
+    BIND(CTOS_KBDInKeyCheck)
+    BIND(CTOS_KBDSetResetEnable)
+    BIND(CTOS_PwrMngDisable)
+    BIND(CTOS_PwrMngEnable)
+    BIND(CTOS_PwrMngGetParameter)
+    BIND(CTOS_PwrMngSetParameter)
+    ///USHORT CTOS_PwrMngRegisterCallBack(void *PwrCallBack);
+    ///USHORT CTOS_PwrMngUnRegisterCallBack(void);
+    BIND(CTOS_PwrMngSetBusy)
+    BIND(CTOS_PwrMngClearBusy)
+    BIND(CTOS_PwrMngGetBusy)
+    BIND(CTOS_PwrMngGetState)
+
+    BIND(CTOS_PowerMode)
+    BIND(CTOS_PowerOff)
+    BIND(CTOS_SystemReset)
+    BIND(CTOS_PowerSource)
+    BIND(CTOS_BatteryGetCapacityByIC)
+    BIND(CTOS_BatteryGetCapacityByADC)
+
+    BIND(CTOS_GetFactorySN)
+    BIND(CTOS_SetFactorySN)
+
     {NULL, NULL}
 #undef BIND
 };
@@ -1605,7 +1896,7 @@ LUAMOD_API int luaopen_ctosapi(lua_State* L)
     // functions
     {
         char* _copy_storage[sizeof(ctosapi_functions)];
-        memset(_copy_storage, 0, sizeof(_copy_storage));
+        bzero(_copy_storage, sizeof(_copy_storage));
 
         const luaL_Reg* original = ctosapi_functions;
         luaL_Reg* copy = (luaL_Reg*)_copy_storage;
@@ -1629,7 +1920,7 @@ LUAMOD_API int luaopen_ctosapi(lua_State* L)
 	for (luaL_Cst* it = ctosapi_constants; it -> name; ++it)
         {
             const char* name = it -> name;
-            if (strncmp(name, "d_", 2))
+            if (strncmp(name, "d_", 2) == 0)
                 name = name + 2;
 
             lua_pushnumber(L, it->value);
