@@ -1,6 +1,10 @@
 local ctos = require "ctosapi"
 
 ctos.LCDTPrintXY(1, 3, "hello from lua")
+
+local socket = require "socket"
+local http = require "socket.http"
+
 ctos.LCDTPrintXY(1, 4, string.sub(ctos.GetSerialNumber(), 0, 16))
 ctos.LCDTPrintXY(1, 5, string.sub(ctos.GetSerialNumber(), 16))
 -- ctos.LCDTPrintXY(1, 5, ctos.GetFactorySN())

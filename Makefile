@@ -5,6 +5,7 @@ PLATFORM=vega5000
 MKDIR = mkdir
 CP = cp
 LUA-DIR = ../dependencies/lua-5.2.0/
+LUASOCKET-DIR = ../dependencies/luasocket-2.0.2/
 
 OBJECTFILES= \
 	${OBJECTDIR}/$(PLATFORM)-main.o \
@@ -24,7 +25,7 @@ ifeq ($(PLATFORM),vega5000)
   LDLIBSOPTIONS=-lcaethernet -lcafont -lcafs -lcakms -lcalcd -lcamodem -lcapmodem -lcaprt -lcartc -lcauart -lcauldpm -lcausbh -lcagsm -lcabarcode -lpthread -ldl -lcaclvw -lcatls -lctosapi -lm
 endif
 
-CFLAGS += -std=c99 -I"${LUA-DIR}/src/"
+CFLAGS += -std=c99 -I"${LUA-DIR}/src/" -I"${LUASOCKET-DIR}/src/"
 
 PATH := ../gcc/bin/:${PATH}
 
@@ -55,8 +56,9 @@ ${OBJECTDIR}/%.o: %.s
 # Vega5000
 build/vega5000/app/bootstrap: ${OBJECTFILES} main.lua
 	${MKDIR} -p ${OBJECTDIR}/app
-	$(CC) -L . -L"${SDKV5LIB}" -L"${LUA-DIR}/src/" -o $@ ${OBJECTFILES} -Wl,-Bstatic -llua -Wl,-Bdynamic ${LDLIBSOPTIONS}
+	$(CC) -L . -L"${SDKV5LIB}" -L"${LUA-DIR}/src/" -L"${LUASOCKET-DIR}/src/" -o $@ ${OBJECTFILES} -Wl,-Bstatic -llua -lmime -lsocket -Wl,-Bdynamic ${LDLIBSOPTIONS}
 	mipsel-linux-uclibc-strip $@
+	rsync --recursive --exclude "*.so" $(LUASOCKET-DIR)/install/ build/vega5000/app/lua/
 
 build/vega5000/vega5000-main.o: build/main.lua.dump vega5000/main.c
 	${MKDIR} -p ${OBJECTDIR}
