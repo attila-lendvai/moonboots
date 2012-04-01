@@ -11,7 +11,7 @@
   (let ((name (buffer-substring-no-properties (match-beginning 1) (match-end 1))))
     (goto-char (match-beginning 0))
     (delete-region (match-beginning 0) (match-end 0))
-    (insert "\tBIND(")
+    (insert "BIND(")
     (insert name)
     (insert ")")
     (insert "\t\t\t// ")))

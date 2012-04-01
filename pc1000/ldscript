@@ -1,0 +1,16 @@
+SECTIONS
+{
+  . = 0x20500000;
+  .text :   { *(.text) }
+  .rodata : { *(.rodata) }
+  .data :   { *(.data) }
+  .bss :    { *(.bss) }
+  end = .;
+  heap_start_address = .;
+/*
+  .debug_info     0 : { *(.debug_info)  }
+  .debug_line     0 : { *(.debug_line)  }
+  .debug_abbrev   0 : { *(.debug_abbrev)}
+  .debug_frame    0 : { *(.debug_frame) }
+*/
+}
