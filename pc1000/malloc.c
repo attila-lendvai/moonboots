@@ -3818,6 +3818,7 @@ void* dlmemalign(size_t alignment, size_t bytes) {
   return internal_memalign(gm, alignment, bytes);
 }
 
+/*
 int dlposix_memalign(void** pp, size_t alignment, size_t bytes) {
   void* mem = 0;
   if (alignment == MALLOC_ALIGNMENT)
@@ -3840,6 +3841,7 @@ int dlposix_memalign(void** pp, size_t alignment, size_t bytes) {
     return 0;
   }
 }
+*/
 
 void* dlvalloc(size_t bytes) {
   size_t pagesz;

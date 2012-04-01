@@ -515,6 +515,33 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
   disable, set to MAX_SIZE_T. This may lead to a very slight speed
   improvement at the expense of carrying around more memory.
 */
+#ifndef _USER_MALLOC_H_
+#define _USER_MALLOC_H_ 1
+
+// configure malloc
+
+#include "bootstrap.h"
+
+// hack to turn the line number into a string
+#define _STR(x) #x
+#define _STR2(x) _STR(x)
+#define S__LINE__ _STR2(__LINE__)
+
+#define LACKS_UNISTD_H 1
+#define MALLOC_FAILURE_ACTION
+#define LACKS_ERRNO_H 1
+#define DLMALLOC_EXPORT
+#define USE_DL_PREFIX 1
+#define ABORT printErrorAndDie("malloc lib panic: " S__LINE__ "@"  __FILE__)
+#define HAVE_MORECORE 0
+#define HAVE_MMAP 0
+#define HAVE_MREMAP 0
+#define NO_MALLOC_STATS 1
+#define REALLOC_ZERO_BYTES_FREES 1
+#define malloc_getpagesize 4096
+#define ONLY_MSPACES 1
+
+// original malloc starts
 
 /* Version identifier to allow people to support multiple versions */
 #ifndef DLMALLOC_VERSION
@@ -925,7 +952,7 @@ DLMALLOC_EXPORT void* dlmemalign(size_t, size_t);
   returns EINVAL if the alignment is not a power of two (3) fails and
   returns ENOMEM if memory cannot be allocated.
 */
-DLMALLOC_EXPORT int dlposix_memalign(void**, size_t, size_t);
+//DLMALLOC_EXPORT int dlposix_memalign(void**, size_t, size_t);
 
 /*
   valloc(size_t n);
@@ -1419,3 +1446,5 @@ DLMALLOC_EXPORT int mspace_mallopt(int, int);
   on the next line, as well as in programs that use this malloc.
   ========================================================================
 */
+
+#endif // _USER_MALLOC_H_
