@@ -10,11 +10,12 @@
 /// TODO: comments marked with three /// means that it's not converted yet
 
 /// TODO: convert all existing bindings to use this
+/// TODO: check if %x works fine. on the pc1000 it doesn't, and i need to use %d instead (also search for this, it's used at other places also)
 #define CTOS_CALL(expr)                                                 \
     {                                                                   \
         USHORT ___ctos_result = (CTOS_##expr);                          \
         if (___ctos_result != d_OK)                                     \
-            return luaL_error(L, "error from CTOS call '" #expr "', 0x%x", (unsigned int)___ctos_result); \
+            return luaL_error(L, "error from CTOS call '" #expr "', %d", (int)___ctos_result); \
     }
 
 static const char lua_checkChar(lua_State *L, int narg)
@@ -72,25 +73,9 @@ LUAMOD_API int luaopen_ctosapi(lua_State* L)
 {
     // functions
     {
-        char* _copy_storage[sizeof(ctosapi_functions)];
-        bzero(_copy_storage, sizeof(_copy_storage));
-
-        const luaL_Reg* original = ctosapi_functions;
-        luaL_Reg* copy = (luaL_Reg*)_copy_storage;
-
-        while (original -> name)
-        {
-            const char* name = original -> name;
-            const char* prefix = "CTOS_";
-            if (strncmp(name, prefix, sizeof(prefix)) == 0)
-                name = name + sizeof(prefix);
-
-            copy -> name = name;
-            copy -> func = original -> func;
-            ++original;
-            ++copy;
-        }
-        luaL_newlib(L, (luaL_Reg*)_copy_storage);
+        const luaL_Reg* copy = copyLuaFunctionTable(ctosapi_functions, "CTOS_");
+        luaL_newlib(L, (luaL_Reg*)copy);
+        free(copy);
     }
 
     // constants

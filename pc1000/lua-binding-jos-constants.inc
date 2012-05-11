@@ -1,4 +1,4 @@
-// -*- mode: c -*-
+// -*- mode: c; coding: utf-8 -*-
 
 BIND(APP_RUN_SPACE)			// 0x20500000
 BIND(APPMEM_SHARE_SPACE)			// 0x20400000

@@ -1,4 +1,12 @@
-// -*- mode: c -*-
+// -*- mode: c; coding: utf-8 -*-
+
+// NOTE: %x doesn't work here in the format string for an unknown reason
+#define JOS_CALL(expr)                                                  \
+    {                                                                   \
+        int ___jos_result = (Lib_##expr);                               \
+        if (___jos_result != 0)                                         \
+            return luaL_error(L, "error from '" #expr "', %d", ___jos_result); \
+    }
 
 #define BINDING(name) static int lua__##name(lua_State* L)
 
@@ -40,9 +48,19 @@ BINDING(Lib_Beef)
     return 0;
 }
 
+///int   Lib_SetDateTime(BYTE *datetime);
+
+//int   Lib_GetDateTime(BYTE *datetime);
+BINDING(Lib_GetDateTime)
+{
+    BYTE dateBuffer[8];
+
+    JOS_CALL(GetDateTime(dateBuffer));
+
+    return pushBCDDateAsLuaTable(L, dateBuffer);
+}
+
 /*
-int   Lib_SetDateTime(BYTE *datetime);
-int   Lib_GetDateTime(BYTE *datetime);
 
 //for timer event
 void  Lib_SetTimer(BYTE TimerNo, WORD Cnt100ms);
@@ -143,15 +161,53 @@ BINDING(Lib_LcdPrintxy)
     return 0;
 }
 
+//void Lib_LcdDrawPlot (BYTE XO,BYTE YO,BYTE Color);
+BINDING(Lib_LcdDrawPlot)
+{
+    BYTE x     = luaL_checknumber(L, 1);
+    BYTE y     = luaL_checknumber(L, 2);
+    BYTE color = luaL_checknumber(L, 3);
+    Lib_LcdDrawPlot(x, y, color);
+    return 0;
+}
+
+///void Lib_LcdDrawLogo(BYTE *pDataBuffer);
+
+//void Lib_LcdDrawBox(BYTE x1,BYTE y1,BYTE x2,BYTE y2);
+BINDING(Lib_LcdDrawBox)
+{
+    Lib_LcdDrawBox(luaL_checknumber(L, 1),
+                   luaL_checknumber(L, 2),
+                   luaL_checknumber(L, 3),
+                   luaL_checknumber(L, 4));
+    return 0;
+}
+
+///int  Lib_LcdRestore(BYTE mode);
+
+//void  Lib_LcdGetSize(BYTE * x, BYTE *y);
+BINDING(Lib_LcdGetSize)
+{
+    BYTE width, height;
+    Lib_LcdGetSize(&width, &height);
+    lua_pushnumber(L, width);
+    lua_pushnumber(L, height);
+    return 2;
+}
+
+
+//void  Lib_LcdDrawLine (BYTE x1,BYTE y1,BYTE x2,BYTE y2, BYTE byColor);
+BINDING(Lib_LcdDrawLine)
+{
+    Lib_LcdDrawLine(luaL_checknumber(L, 1),
+                    luaL_checknumber(L, 2),
+                    luaL_checknumber(L, 3),
+                    luaL_checknumber(L, 4),
+                    luaL_checknumber(L, 5));
+    return 0;
+}
+
 /*
-void Lib_LcdDrawPlot (BYTE XO,BYTE YO,BYTE Color);
-void Lib_LcdDrawLogo(BYTE *pDataBuffer);
-void Lib_LcdDrawBox(BYTE x1,BYTE y1,BYTE x2,BYTE y2);
-int  Lib_LcdRestore(BYTE mode);
-
-void  Lib_LcdGetSize(BYTE * x, BYTE *y);
-void  Lib_LcdDrawLine (BYTE x1,BYTE y1,BYTE x2,BYTE y2, BYTE byColor);
-
 BYTE Lib_LcdGetSelectItem(BYTE *pbyItemString, BYTE byItemNumber, BYTE byExitMode);
 BYTE Lib_LcdGetSelectItemCE(BYTE *pbyChnItemString, BYTE *pbyEngItemString,
                      BYTE byItemNumber, BYTE byExitMode);
@@ -160,16 +216,94 @@ void Lib_LcdPrintxyCE(BYTE col, BYTE row, BYTE mode, char *pCHN , char *pEN);
 void Lib_LcdPrintxyExtCE(BYTE col, BYTE row, BYTE mode, char * pCHN, char * pEN, int iPara);
 
 void  Lib_Des(uchar *input, uchar *output,uchar *deskey, int mode);
+*/
 
-int  Lib_ComReset(BYTE port);
-int  Lib_ComWrite(BYTE port,BYTE *writebyte,int write_len);
-int  Lib_ComRecvByte(BYTE port,BYTE *recv_byte,int waitms);
-int  Lib_ComRecv(BYTE port,BYTE *recv_data,int max_len,int *recv_len,int waitms);
-int  Lib_ComSendByte(BYTE port,BYTE send_byte);
-int  Lib_ComSend(BYTE port,BYTE *send_data,int send_len);
-int  Lib_ComClose(BYTE port);
-int  Lib_ComOpen(BYTE port, char *ComPara);
 
+//int  Lib_ComReset(BYTE port);
+BINDING(Lib_ComReset)
+{
+    JOS_CALL(ComReset(luaL_checknumber(L, 1)));
+    return 0;
+}
+
+///int  Lib_ComWrite(BYTE port,BYTE *writebyte,int write_len);
+
+//int  Lib_ComRecvByte(BYTE port,BYTE *recv_byte,int waitms);
+BINDING(Lib_ComRecvByte)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    int timeout = luaL_checknumber(L, 2) * 1000;
+    BYTE data = 0;
+
+    JOS_CALL(ComRecvByte(port, &data, timeout));
+
+    lua_pushnumber(L, data);
+    return 1;
+}
+
+//int  Lib_ComRecv(BYTE port,BYTE *recv_data,int max_len,int *recv_len,int waitms);
+BINDING(Lib_ComRecv)
+{
+    BYTE port           = luaL_checknumber(L, 1);
+    int requestedLength = luaL_checknumber(L, 2);
+    int timeout         = luaL_checknumber(L, 3) * 1000;
+    luaL_Buffer luaBuffer;
+    luaL_buffinit(L, &luaBuffer);
+
+    if (requestedLength <= 0)
+        return luaL_error(L, "buffer size %d < 0 for Lib_ComRecv", requestedLength);
+
+    {
+        void *cBuffer = luaL_prepbuffsize(&luaBuffer, requestedLength);
+        int receivedLength = 0;
+
+        JOS_CALL(ComRecv(port, cBuffer, requestedLength, &receivedLength, timeout));
+
+        luaL_addsize(&luaBuffer, receivedLength);
+    }
+
+    luaL_pushresult(&luaBuffer);
+    return 1;
+}
+
+//int  Lib_ComSendByte(BYTE port,BYTE send_byte);
+BINDING(Lib_ComSendByte)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    BYTE data = luaL_checknumber(L, 2);
+
+    JOS_CALL(ComSendByte(port, data));
+    return 0;
+}
+
+//int  Lib_ComSend(BYTE port,BYTE *send_data,int send_len);
+BINDING(Lib_ComSend)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    BYTE *message = (BYTE *)luaL_checkstring(L, 2);
+
+    JOS_CALL(ComSend(port, message, strlen(message)));
+    return 0;
+}
+
+//int  Lib_ComClose(BYTE port);
+BINDING(Lib_ComClose)
+{
+    JOS_CALL(ComClose(luaL_checknumber(L, 1)));
+    return 0;
+}
+
+//int  Lib_ComOpen(BYTE port, char *ComPara);
+BINDING(Lib_ComOpen)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    const char *config = luaL_checkstring(L, 2);
+
+    JOS_CALL(ComOpen(port, (char *)config));
+    return 0;
+}
+
+/*
 int  Lib_UsbTempClear(uchar port);
 int  Lib_UsbOpen(uchar port);
 int  Lib_UsbClose(uchar port);
@@ -300,12 +434,30 @@ static const luaL_Reg josapi_functions[] = {
     BINDING(Lib_DelayMs)
     BINDING(Lib_Beep)
     BINDING(Lib_Beef)
+
+    BINDING(Lib_GetDateTime)
+
     BINDING(Lib_KbGetCh)
 
     BINDING(Lib_LcdCls)
     BINDING(Lib_LcdGotoxy)
     BINDING(Lib_Lcdprintf)
     BINDING(Lib_LcdPrintxy)
-    {NULL, NULL}
+
+    BINDING(Lib_LcdDrawPlot)
+    BINDING(Lib_LcdDrawBox)
+    BINDING(Lib_LcdGetSize)
+    BINDING(Lib_LcdDrawLine)
+
+    BINDING(Lib_ComReset)
+    BINDING(Lib_ComRecvByte)
+    BINDING(Lib_ComRecv)
+    BINDING(Lib_ComSendByte)
+    BINDING(Lib_ComSend)
+    BINDING(Lib_ComClose)
+    BINDING(Lib_ComOpen)
+
 #undef BINDING
+
+    {NULL, NULL}
 };

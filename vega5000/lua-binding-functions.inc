@@ -7,12 +7,12 @@ BINDING(CTOS_GetSerialNumber)
 {
     BYTE serial[16];
     char serial_as_string[sizeof(serial) * 2 + 1];
-    USHORT result = CTOS_GetSerialNumber(serial);
+    CTOS_CALL(GetSerialNumber(serial));
+
     bytes_to_hexa_string(serial, sizeof(serial), serial_as_string);
 
     lua_pushstring(L, serial_as_string);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 /*
@@ -301,16 +301,167 @@ USHORT CTOS_FileGetFreeSpace(BYTE bStorgeType, ULONG* pulFreeSize);
 //
 //=============================================================================================================================
 
-USHORT CTOS_RS232Open(BYTE bPort, ULONG ulBaudRate, BYTE bParity, BYTE bDataBits, BYTE bStopBits);
-USHORT CTOS_RS232TxReady(BYTE bPort);
-USHORT CTOS_RS232TxData(BYTE bPort, BYTE* baBuf, USHORT usLen);
-USHORT CTOS_RS232RxReady(BYTE bPort, USHORT* pusLen);
-USHORT CTOS_RS232RxData(BYTE bPort, BYTE* baBuf, USHORT* pusLen);
-USHORT CTOS_RS232SetRTS(BYTE bPort, BYTE bOnOff);
-USHORT CTOS_RS232GetCTS(BYTE bPort);
-USHORT CTOS_RS232FlushRxBuffer(BYTE bPort);
-USHORT CTOS_RS232FlushTxBuffer(BYTE bPort);
-USHORT CTOS_RS232Close(BYTE bPort);
+*/
+
+//USHORT CTOS_RS232Open(BYTE bPort, ULONG ulBaudRate, BYTE bParity, BYTE bDataBits, BYTE bStopBits);
+BINDING(CTOS_RS232Open)
+{
+    BYTE port          = luaL_checknumber(L, 1);
+    ULONG baud         = luaL_checknumber(L, 2);
+    const char *parity = luaL_checkstring(L, 3);
+    BYTE dataBits      = luaL_checknumber(L, 4);
+    BYTE stopBits      = luaL_checknumber(L, 5);
+
+    // TODO this does not show up propery?! luaL_error(L, "CTOS_RS232Open auto errororororororororo delme")
+
+    if (strlen(parity) > 1)
+        return luaL_error(L, "CTOS_RS232Open: parity argument must be a string of length 1");
+
+    switch (parity[0])
+    {
+      case 'E':
+      case 'O':
+      case 'N':
+        break;
+      default:
+        return luaL_error(L, "CTOS_RS232Open: parity argument must be either 'E', 'O', or 'N'");
+    }
+
+    CTOS_CALL(RS232Open(port, baud, parity[0], dataBits, stopBits));
+    return 0;
+}
+
+//USHORT CTOS_RS232TxReady(BYTE bPort);
+BINDING(CTOS_RS232TxReady)
+{
+    BYTE port = luaL_checknumber(L, 1);
+
+    USHORT result = CTOS_RS232TxReady(port);
+
+    if (result == d_RS232_BUSY)
+        lua_pushboolean(L, 0);
+    else if (result == d_OK)
+        lua_pushboolean(L, 1);
+    else
+        return luaL_error(L, "error from CTOS call CTOS_RS232TxReady, %d", (int)result);
+
+    return 1;
+}
+
+//USHORT CTOS_RS232TxData(BYTE bPort, BYTE* baBuf, USHORT usLen);
+BINDING(CTOS_RS232TxData)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    BYTE *message = (BYTE *)luaL_checkstring(L, 2);
+
+    CTOS_CALL(RS232TxData(port, message, strlen(message)));
+    return 0;
+}
+
+//USHORT CTOS_RS232RxReady(BYTE bPort, USHORT* pusLen);
+BINDING(CTOS_RS232RxReady)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    USHORT length = 0;
+
+    CTOS_CALL(RS232RxReady(port, &length));
+
+    lua_pushnumber(L, length);
+
+    return 1;
+}
+
+//USHORT CTOS_RS232RxData(BYTE bPort, BYTE* baBuf, USHORT* pusLen);
+BINDING(CTOS_RS232RxData)
+{
+    BYTE port           = luaL_checknumber(L, 1);
+    int requestedLength = luaL_optnumber(L, 2, -1);
+
+    if (requestedLength <= 0)
+    {
+        USHORT rxReady = 0;
+        CTOS_CALL(RS232RxReady(port, &rxReady));
+        requestedLength = rxReady;
+    }
+
+    luaL_Buffer luaBuffer;
+    luaL_buffinit(L, &luaBuffer);
+
+    if (requestedLength < 0)
+        return luaL_error(L, "buffer size %d < 0 for CTOS_RS232RxData", requestedLength);
+
+    {
+        void *cBuffer = luaL_prepbuffsize(&luaBuffer, requestedLength);
+        USHORT receivedLength = requestedLength;
+
+        CTOS_CALL(RS232RxData(port, cBuffer, &receivedLength));
+
+        luaL_addsize(&luaBuffer, receivedLength);
+    }
+
+    luaL_pushresult(&luaBuffer);
+    return 1;
+}
+
+//USHORT CTOS_RS232SetRTS(BYTE bPort, BYTE bOnOff);
+BINDING(CTOS_RS232SetRTS)
+{
+    BYTE port = luaL_checknumber(L, 1);
+    BYTE ready = lua_checkBoolean(L, 2);
+
+    CTOS_CALL(RS232SetRTS(port, ready));
+
+    return 0;
+}
+
+//USHORT CTOS_RS232GetCTS(BYTE bPort);
+BINDING(CTOS_RS232GetCTS)
+{
+    BYTE port = luaL_checknumber(L, 1);
+
+    USHORT result = CTOS_RS232GetCTS(port);
+
+    if (result == d_ON)
+        lua_pushboolean(L, 1);
+    else if (result == d_OFF)
+        lua_pushboolean(L, 0);
+    else
+        return luaL_error(L, "error from CTOS call CTOS_RS232GetCTS, %x", (int)result);
+
+    return 0;
+}
+
+//USHORT CTOS_RS232FlushRxBuffer(BYTE bPort);
+BINDING(CTOS_RS232FlushRxBuffer)
+{
+    BYTE port = luaL_checknumber(L, 1);
+
+    CTOS_CALL(RS232FlushRxBuffer(port));
+
+    return 0;
+}
+
+//USHORT CTOS_RS232FlushTxBuffer(BYTE bPort);
+BINDING(CTOS_RS232FlushTxBuffer)
+{
+    BYTE port = luaL_checknumber(L, 1);
+
+    CTOS_CALL(RS232FlushTxBuffer(port));
+
+    return 0;
+}
+
+//USHORT CTOS_RS232Close(BYTE bPort);
+BINDING(CTOS_RS232Close)
+{
+    BYTE port = luaL_checknumber(L, 1);
+
+    CTOS_CALL(RS232Close(port));
+
+    return 0;
+}
+
+/*
 
 //=============================================================================================================================
 //
@@ -382,8 +533,9 @@ BINDING(CTOS_TCP_GPRSOpen)
     if (ipAsString && strlen(ipAsString) > 0)
         return luaL_error(L, "The Lua binding for CTOS_TCP_GPRSOpen does not support the IP argument");
 
-    lua_pushnumber(L, CTOS_TCP_GPRSOpen(ip, (char *)apn, (char *)username, (char *)password));
-    return 1;
+    CTOS_CALL(TCP_GPRSOpen(ip, (char *)apn, (char *)username, (char *)password));
+
+    return 0;
 }
 
 //USHORT CTOS_TCP_GPRSClose(void);
@@ -757,8 +909,8 @@ USHORT CTOS_LCDGMenuEx(BYTE bAttribute, STR *pbaHeaderString, STR *pcaItemString
 //USHORT CTOS_LCDTClearDisplay(void);
 BINDING(CTOS_LCDTClearDisplay)
 {
-    lua_pushnumber(L, CTOS_LCDTClearDisplay());
-    return 1;
+    CTOS_CALL(LCDTClearDisplay());
+    return 0;
 }
 
 //USHORT CTOS_LCDTGotoXY(USHORT usX,USHORT usY);
@@ -766,8 +918,8 @@ BINDING(CTOS_LCDTGotoXY)
 {
     USHORT x = luaL_checknumber(L, 1);
     USHORT y = luaL_checknumber(L, 2);
-    lua_pushnumber(L, CTOS_LCDTGotoXY(x, y));
-    return 1;
+    CTOS_CALL(LCDTGotoXY(x, y));
+    return 0;
 }
 
 //USHORT CTOS_LCDTWhereX(void);
@@ -788,8 +940,12 @@ BINDING(CTOS_LCDTWhereY)
 BINDING(CTOS_LCDTPrint)
 {
     const char *message = luaL_optstring(L, 1, "nil");
-    lua_pushnumber(L, CTOS_LCDTPrint((char*)message));
-    return 1;
+
+    USHORT result = CTOS_LCDTPrint((char*)message);
+    if (result != d_OK && result != d_LCD_OUT_OF_RANGE)
+        return luaL_error(L, "error from CTOS call 'CTOS_LCDTPrint', %d", (int)result);
+
+    return 0;
 }
 
 //USHORT CTOS_LCDTPrintXY(USHORT usX, USHORT usY, UCHAR* pbBuf);
@@ -798,16 +954,20 @@ BINDING(CTOS_LCDTPrintXY)
     USHORT x = luaL_checknumber(L, 1);
     USHORT y = luaL_checknumber(L, 2);
     const char *message = luaL_optstring(L, 3, "nil");
-    lua_pushnumber(L, CTOS_LCDTPrintXY(x, y, (char*)message));
-    return 1;
+
+    USHORT result = CTOS_LCDTPrintXY(x, y, (char*)message);
+    if (result != d_OK && result != d_LCD_OUT_OF_RANGE)
+        return luaL_error(L, "error from CTOS call 'CTOS_LCDTPrintXY', %d", (int)result);
+
+    return 0;
 }
 
 //USHORT CTOS_LCDTPutch(UCHAR ch);
 BINDING(CTOS_LCDTPutch)
 {
     const char ch = lua_checkChar(L, 1);
-    lua_pushnumber(L, CTOS_LCDTPutch(ch));
-    return 1;
+    CTOS_CALL(LCDTPutch(ch));
+    return 0;
 }
 
 //USHORT CTOS_LCDTPutchXY (USHORT usX, USHORT usY, UCHAR bChar);
@@ -816,22 +976,22 @@ BINDING(CTOS_LCDTPutchXY)
     USHORT x = luaL_checknumber(L, 1);
     USHORT y = luaL_checknumber(L, 2);
     const char ch = lua_checkChar(L, 1);
-    lua_pushnumber(L, CTOS_LCDTPutchXY(x, y, ch));
-    return 1;
+    CTOS_CALL(LCDTPutchXY(x, y, ch));
+    return 0;
 }
 
 //USHORT CTOS_LCDTClear2EOL(void);
 BINDING(CTOS_LCDTClear2EOL)
 {
-    lua_pushnumber(L, CTOS_LCDTClear2EOL());
-    return 1;
+    CTOS_CALL(LCDTClear2EOL());
+    return 0;
 }
 
 //USHORT CTOS_LCDTSetReverse(BOOL boReverse);
 BINDING(CTOS_LCDTSetReverse)
 {
-    lua_pushnumber(L, CTOS_LCDTSetReverse(lua_checkBoolean(L, 1)));
-    return 1;
+    CTOS_CALL(LCDTSetReverse(lua_checkBoolean(L, 1)));
+    return 0;
 }
 
 /*
@@ -859,35 +1019,33 @@ USHORT CTOS_UIKeypad(USHORT usX, USHORT usY, STR *pcaKeyboardLayout[], UCHAR ucC
 BINDING(CTOS_KBDGet)
 {
     BYTE key = 0;
-    USHORT result = CTOS_KBDGet(&key);
+    CTOS_CALL(KBDGet(&key));
     lua_pushnumber(L, key);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_KBDHit(BYTE* pbKey);
 BINDING(CTOS_KBDHit)
 {
-    BYTE key;
-    USHORT result = CTOS_KBDHit(&key);
+    BYTE key = 0;
+    CTOS_CALL(KBDHit(&key));
     lua_pushnumber(L, key);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_KBDSetSound(BYTE bOnOff);
 BINDING(CTOS_KBDSetSound)
 {
-    lua_pushnumber(L, CTOS_KBDSetSound(lua_checkBoolean(L, 1)));
-    return 1;
+    CTOS_CALL(KBDSetSound(lua_checkBoolean(L, 1)));
+    return 0;
 }
 
 //USHORT CTOS_KBDSetFrequence(USHORT usFreq, USHORT usDuration);
 BINDING(CTOS_KBDSetFrequence)
 {
-    lua_pushnumber(L, CTOS_KBDSetFrequence(luaL_checknumber(L, 1),
-                                           luaL_checknumber(L, 2)));
-    return 1;
+    CTOS_CALL(KBDSetFrequence(luaL_checknumber(L, 1),
+                              luaL_checknumber(L, 2)));
+    return 0;
 }
 
 
@@ -895,27 +1053,25 @@ BINDING(CTOS_KBDSetFrequence)
 BINDING(CTOS_KBDInKey)
 {
     BOOL value;
-    USHORT result = CTOS_KBDInKey(&value);
+    CTOS_CALL(KBDInKey(&value));
     lua_pushboolean(L, value);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_KBDInKeyCheck(BYTE *pbKey);
 BINDING(CTOS_KBDInKeyCheck)
 {
     BYTE key;
-    USHORT result = CTOS_KBDInKeyCheck(&key);
+    CTOS_CALL(KBDInKeyCheck(&key));
     lua_pushnumber(L, key);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_KBDSetResetEnable(BOOL boIsEnable);
 BINDING(CTOS_KBDSetResetEnable)
 {
-    lua_pushnumber(L, CTOS_KBDSetResetEnable(lua_checkBoolean(L, 1)));
-    return 1;
+    CTOS_CALL(KBDSetResetEnable(lua_checkBoolean(L, 1)));
+    return 0;
 }
 
 /*
@@ -1056,16 +1212,16 @@ USHORT CTOS_MSRGetLastErr (BYTE* baTk1Err, BYTE* baTk2Err, BYTE* baTk3Err);
 //USHORT CTOS_PwrMngDisable(void);
 BINDING(CTOS_PwrMngDisable)
 {
-    lua_pushnumber(L, CTOS_PwrMngDisable());
-    return 1;
+    CTOS_CALL(PwrMngDisable());
+    return 0;
 }
 
 //USHORT CTOS_PwrMngEnable(UCHAR bPwrType,ULONG ulPwrTime);
 BINDING(CTOS_PwrMngEnable)
 {
-    lua_pushnumber(L, CTOS_PwrMngEnable(luaL_checknumber(L, 1),
-                                        luaL_checknumber(L, 2)));
-    return 1;
+    CTOS_CALL(PwrMngEnable(luaL_checknumber(L, 1),
+                           luaL_checknumber(L, 2)));
+    return 0;
 }
 
 //USHORT CTOS_PwrMngGetParameter(UCHAR* bPwrEnable, UCHAR* bPwrType, ULONG* ulPwrTime);
@@ -1073,21 +1229,20 @@ BINDING(CTOS_PwrMngGetParameter)
 {
     UCHAR state = 0, type = 0;
     ULONG time = 0;
-    USHORT result = CTOS_PwrMngGetParameter(&state, &type, &time);
+    CTOS_CALL(PwrMngGetParameter(&state, &type, &time));
     lua_pushboolean(L, state);
     lua_pushnumber(L, type);
     lua_pushnumber(L, time);
-    lua_pushnumber(L, result);
-    return 4;
+    return 3;
 }
 
 //USHORT CTOS_PwrMngSetParameter(UCHAR bPwrEnable, UCHAR bPwrType, ULONG ulPwrTime);
 BINDING(CTOS_PwrMngSetParameter)
 {
-    lua_pushnumber(L, CTOS_PwrMngSetParameter(lua_checkBoolean(L, 1),
-                                              luaL_checknumber(L, 2),
-                                              luaL_checknumber(L, 3)));
-    return 1;
+    CTOS_CALL(PwrMngSetParameter(lua_checkBoolean(L, 1),
+                                 luaL_checknumber(L, 2),
+                                 luaL_checknumber(L, 3)));
+    return 0;
 }
  
 ///USHORT CTOS_PwrMngRegisterCallBack(void *PwrCallBack);
@@ -1096,52 +1251,49 @@ BINDING(CTOS_PwrMngSetParameter)
 //USHORT CTOS_PwrMngSetBusy(void);
 BINDING(CTOS_PwrMngSetBusy)
 {
-    lua_pushnumber(L, CTOS_PwrMngSetBusy());
-    return 1;
+    CTOS_CALL(PwrMngSetBusy());
+    return 0;
 }
 
 //USHORT CTOS_PwrMngClearBusy(void);
 BINDING(CTOS_PwrMngClearBusy)
 {
-    lua_pushnumber(L, CTOS_PwrMngClearBusy());
-    return 1;
+    CTOS_CALL(PwrMngClearBusy());
+    return 0;
 }
 
 //USHORT CTOS_PwrMngGetBusy(BOOL *fBusy);
 BINDING(CTOS_PwrMngGetBusy)
 {
     UCHAR state = 0;
-    USHORT result = CTOS_PwrMngGetBusy(&state);
+    CTOS_CALL(PwrMngGetBusy(&state));
     lua_pushboolean(L, state);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_PwrMngGetState(UCHAR *bState);
 BINDING(CTOS_PwrMngGetState)
 {
     UCHAR state = 0;
-    USHORT result = CTOS_PwrMngGetState(&state);
+    CTOS_CALL(PwrMngGetState(&state));
     lua_pushboolean(L, state);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_PowerMode(BYTE bMode);
 BINDING(CTOS_PowerMode)
 {
-    lua_pushnumber(L, CTOS_PowerMode(luaL_checknumber(L, 1)));
-    return 1;
+    CTOS_CALL(PowerMode(luaL_checknumber(L, 1)));
+    return 0;
 }
 
 //USHORT CTOS_PowerSource(UCHAR* bSrc);
 BINDING(CTOS_PowerSource)
 {
     UCHAR source = 0;
-    USHORT result = CTOS_PowerSource(&source);
+    CTOS_CALL(PowerSource(&source));
     lua_pushnumber(L, source);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_Get_Battery_Capacity_ByIC(BYTE* bPercentage);
@@ -1151,20 +1303,18 @@ BINDING(CTOS_PowerSource)
 BINDING(CTOS_BatteryGetCapacityByIC)
 {
     BYTE capacity = 0;
-    USHORT result = CTOS_BatteryGetCapacityByIC(&capacity);
+    CTOS_CALL(BatteryGetCapacityByIC(&capacity));
     lua_pushnumber(L, capacity);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_BatteryGetCapacityByADC(BYTE* bPercentage);
 BINDING(CTOS_BatteryGetCapacityByADC)
 {
     BYTE capacity = 0;
-    USHORT result = CTOS_BatteryGetCapacityByADC(&capacity);
+    CTOS_CALL(BatteryGetCapacityByADC(&capacity));
     lua_pushnumber(L, capacity);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 ///USHORT CTOS_BatteryReadSN(BYTE* baSN, BYTE* bLen);
@@ -1220,11 +1370,10 @@ BINDING(CTOS_GetFactorySN)
 {
     BYTE serial[16];
     bzero(serial, sizeof(serial));
-    USHORT result = CTOS_GetFactorySN(serial);
+    CTOS_CALL(GetFactorySN(serial));
 
     lua_pushstring(L, serial);
-    lua_pushnumber(L, result);
-    return 2;
+    return 1;
 }
 
 //USHORT CTOS_SetFactorySN(BYTE *baFactorySN);
@@ -1233,8 +1382,8 @@ BINDING(CTOS_SetFactorySN)
     char serial[16];
     bzero(serial, sizeof(serial));
     strncpy(serial, luaL_checkstring(L, 1), sizeof(serial) - 1);
-    lua_pushnumber(L, CTOS_SetFactorySN(serial));
-    return 1;
+    CTOS_CALL(SetFactorySN(serial));
+    return 0;
 }
 
 /*
@@ -1251,8 +1400,7 @@ BINDING(CTOS_SystemWait)
     DWORD waitEvents = luaL_checknumber(L, 2);
     DWORD triggeredEvents = 0;
 
-    //CTOS_CALL(SystemWait(timeout, waitEvent, &triggeredEvents));
-    CTOS_SystemWait(timeout, waitEvents, &triggeredEvents);
+    CTOS_CALL(SystemWait(timeout, waitEvents, &triggeredEvents));
 
     lua_pushnumber(L, triggeredEvents);
     return 1;
@@ -1289,6 +1437,17 @@ static const luaL_Reg ctosapi_functions[] = {
 
     BINDING(CTOS_TickGet)
 
+    BINDING(CTOS_RS232Open)
+    BINDING(CTOS_RS232TxReady)
+    BINDING(CTOS_RS232TxData)
+    BINDING(CTOS_RS232RxReady)
+    BINDING(CTOS_RS232RxData)
+    BINDING(CTOS_RS232SetRTS)
+    BINDING(CTOS_RS232GetCTS)
+    BINDING(CTOS_RS232FlushRxBuffer)
+    BINDING(CTOS_RS232FlushTxBuffer)
+    BINDING(CTOS_RS232Close)
+
     BINDING(CTOS_TCP_GPRSInit)
     BINDING(CTOS_TCP_GPRSOpen)
     BINDING(CTOS_TCP_GPRSClose)
@@ -1304,6 +1463,7 @@ static const luaL_Reg ctosapi_functions[] = {
     BINDING(CTOS_LCDGTextOut)
 
     BINDING(CTOS_LCDTClearDisplay)
+
     BINDING(CTOS_LCDTGotoXY)
     BINDING(CTOS_LCDTWhereX)
     BINDING(CTOS_LCDTWhereY)

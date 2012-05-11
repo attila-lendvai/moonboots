@@ -38,7 +38,7 @@ void platformLuaBindingSetupHook(lua_State *L)
         lua_getfield(L, -1, "preload");
 
         lua_pushcfunction(L, luaopen_ctosapi);
-        lua_setfield(L, -2, "ctosapi");
+        lua_setfield(L, -2, "castles.ctosapi");
 
         lua_pushcfunction(L, luaopen_socket_core);
         lua_setfield(L, -2, "socket.core");
