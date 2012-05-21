@@ -13,7 +13,7 @@
 
 #include "bootstrap.h"
 
-#include "build/main.lua.dump"
+#include "build/squished.lua.dump"
 
 void startupLog(const char* msg)
 {
@@ -22,11 +22,11 @@ void startupLog(const char* msg)
 
 void printErrorAndDie(const char *message)
 {
-    // TODO use paging
+    if (strlen(message) == 0)
+        message = "printErrorAndDie called with zero length message";
 
-    printXY(0, 0, message);
+    displayMultilineText(message);
 
-    getKey();
     exit(1);
 }
 
@@ -49,6 +49,39 @@ static int luaPanicHook(lua_State *L)
 
     getKey();
     return 0;  // return to Lua to abort
+}
+
+struct luaL_Reg *
+copyLuaFunctionTable(const luaL_Reg *sourceEntries, const char *prefixToDrop)
+{
+    int count = 0;
+    luaL_Reg *entry = (luaL_Reg *)sourceEntries;
+    for (; entry -> name; ++entry, ++count);
+
+    size_t rawSize = (count + 1) * sizeof(luaL_Reg);
+    char* rawStorage = malloc(rawSize);
+    memset(rawStorage, 0, rawSize);
+
+    luaL_Reg* copy = (luaL_Reg*)rawStorage;
+
+    const luaL_Reg *original = sourceEntries;
+    while (original -> name)
+    {
+        const char* name = original -> name;
+        if (prefixToDrop)
+        {
+            size_t prefixLength = strlen(prefixToDrop);
+            if (strncmp(name, prefixToDrop, prefixLength) == 0)
+                name = name + prefixLength;
+        }
+
+        copy -> name = name;
+        copy -> func = original -> func;
+        ++original;
+        ++copy;
+    }
+
+    return (struct luaL_Reg *)rawStorage;
 }
 
 int genericMain(void)
@@ -76,10 +109,10 @@ int genericMain(void)
 
     startupLog("Running script...");
 
-    main_lua[main_lua_len - 1] = 0;
-    status = luaL_dostring(L, main_lua);
+    squished_lua[squished_lua_len - 1] = 0;
+    status = luaL_dostring(L, squished_lua);
     if (status)
-        printLuaErrorAndDie(L, "running main.lua");
+        printLuaErrorAndDie(L, "running main lua script");
 
     clearScreen();
     startupLog("Cleaning up...");

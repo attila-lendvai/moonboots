@@ -1,0 +1,15 @@
+-- Output filename
+Output "build/squished.lua"
+
+local model = GetOption("model")
+
+if model == "pc1000" then
+   Main "lua/pc1000.lua"
+elseif model == "vega5000" then
+   Main "lua/vega5000.lua"
+else
+   --error(string.format("please specify which model to squish for using --model=pc1000"))
+end
+
+-- This is normal/main script
+Main "lua/main.lua"

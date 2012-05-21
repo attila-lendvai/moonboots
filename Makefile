@@ -1,17 +1,23 @@
 # Environment
 
-PLATFORM ?= vega5000
+#PLATFORM ?= vega5000
+PLATFORM ?= pc1000
 OBJECTDIR ?= build
 
 MKDIR = mkdir
 CP = cp
 LUA-DIR = ../$(PLATFORM)/dependencies/lua-5.2.0/
 LUASOCKET-DIR = ../$(PLATFORM)/dependencies/luasocket2-hg/
+SQUISH = ../dependencies/lua-5.1.5/src/lua ../dependencies/squish/squish
 
 BASE_OBJECTFILES = \
 	$(OBJECTDIR)/bootstrap.o \
 	$(OBJECTDIR)/$(PLATFORM)/main.o \
 	$(OBJECTDIR)/$(PLATFORM)/lua-binding.o
+
+LUA_FILES = \
+	lua/main.lua \
+	lua/$(PLATFORM).lua
 
 ifeq ($(PLATFORM),pc1000)
   CC = arm-elf-gcc
@@ -27,7 +33,7 @@ ifeq ($(PLATFORM),vega5000)
   LDLIBSOPTIONS=-lcaethernet -lcafont -lcafs -lcakms -lcalcd -lcamodem -lcapmodem -lcaprt -lcartc -lcauart -lcauldpm -lcausbh -lcagsm -lcabarcode -lpthread -ldl -lcaclvw -lcatls -lctosapi -lm
 endif
 
-OBJECTFILES ?= BASE_OBJECTFILES
+OBJECTFILES ?= $(BASE_OBJECTFILES)
 
 CFLAGS += -std=c99 -O3 -Wall -DLUA_COMPAT_MODULE -I. -I"${LUA-DIR}/src/" -I"${LUASOCKET-DIR}/src/"
 
@@ -39,19 +45,21 @@ prepare:
 	${MKDIR} -p $(OBJECTDIR)/$(PLATFORM)/app
 
 # PC1000
-$(OBJECTDIR)/pc1000/app/bootstrap.elf: ${OBJECTFILES} main.lua
-#	main.o must be the first one to override the broken malloc in their libc
+$(OBJECTDIR)/pc1000/app/bootstrap.elf: ${OBJECTFILES}
 	arm-elf-ld --wrap=exit --wrap=malloc --wrap=free --wrap=calloc --wrap=realloc -o $@ $(OBJECTFILES) \
 		-T ./pc1000/ldscript -L ../pc1000/gcc/lib/ -L ../pc1000/gcc/libelf/ -L ../pc1000/api/lib/ -L . -L"${LUA-DIR}/src/" \
 		-llua -l"pc1000wlsapi(v11)" -l"pc1000api(v09)" -lc -lgcc -lm
 
 $(OBJECTDIR)/pc1000/app/bootstrap: $(OBJECTDIR)/pc1000/app/bootstrap.elf
-#	elftobin $(OBJECTDIR)\\pc1000\\app\\bootstrap.elf $(OBJECTDIR)\\pc1000\\app\\bootstrap.bin PC1000---APP
 	elftobin_n $(OBJECTDIR)\\pc1000\\app\\bootstrap.elf $(OBJECTDIR)\\pc1000\\app\\bootstrap.bin PC1000---APP
+#	elftobin $(OBJECTDIR)\\pc1000\\app\\bootstrap.elf $(OBJECTDIR)\\pc1000\\app\\bootstrap.bin PC1000---APP
 #	elf2bin $(OBJECTDIR)\\pc1000\\app\\bootstrap.elf $(OBJECTDIR)\\pc1000\\app\\bootstrap.bin PC1000---APP
 
-$(OBJECTDIR)/pc1000/main.o: $(OBJECTDIR)/main.lua.dump pc1000/main.c
+$(OBJECTDIR)/pc1000/main.o: pc1000/main.c
 	$(COMPILE.c) -O3 -o $@ pc1000/main.c
+
+$(OBJECTDIR)/pc1000/lua-binding.o: pc1000/lua-*
+	$(COMPILE.c) -O3 -o $@ pc1000/lua-binding.c
 
 $(OBJECTDIR)/pc1000/%.o: pc1000/%.c
 	$(COMPILE.c) -O3 -o $@ $<
@@ -63,7 +71,7 @@ $(OBJECTDIR)/pc1000/%.o: pc1000/%.s
 $(OBJECTDIR)/vega5000/app/bootstrap: ${OBJECTFILES}
 	$(CC) -L . -L"${SDKV5LIB}" -L"${LUA-DIR}/src/" -L"${LUASOCKET-DIR}/src/" -o $@ ${OBJECTFILES} -Wl,-Bstatic -llua -lmime -lsocket -Wl,-Bdynamic ${LDLIBSOPTIONS}
 	mipsel-linux-uclibc-strip $@
-	rsync --recursive --exclude "*.so" ../dependencies/install/share/lua/5.2/ build/vega5000/app/lua/
+	rsync --recursive --exclude "*.so" ../vega5000/dependencies/install/share/lua/5.2/ build/vega5000/app/lua/
 
 $(OBJECTDIR)/vega5000/vega5000/main.o: vega5000/main.c
 	$(COMPILE.c) -o $@ vega5000/main.c
@@ -72,11 +80,12 @@ $(OBJECTDIR)/vega5000/vega5000/lua-binding.o: vega5000/lua-binding.c
 	$(COMPILE.c) -o $@ $<
 
 # Generic
-$(OBJECTDIR)/bootstrap.o: $(OBJECTDIR)/main.lua.dump bootstrap.c
+$(OBJECTDIR)/bootstrap.o: $(OBJECTDIR)/squished.lua.dump bootstrap.c
 	$(COMPILE.c) -o $@ bootstrap.c
 
-$(OBJECTDIR)/main.lua.dump: main.lua
-	xxd -i main.lua $@
+$(OBJECTDIR)/squished.lua.dump: $(LUA_FILES)
+	$(SQUISH) --no-minify --debug --model=$(PLATFORM)
+	cd $(OBJECTDIR) && xxd -i squished.lua squished.lua.dump
 
 $(OBJECTDIR)/%.o: %.c
 	$(COMPILE.c) -o $@ $<

@@ -522,11 +522,6 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 
 #include "bootstrap.h"
 
-// hack to turn the line number into a string
-#define _STR(x) #x
-#define _STR2(x) _STR(x)
-#define S__LINE__ _STR2(__LINE__)
-
 #define LACKS_UNISTD_H 1
 #define MALLOC_FAILURE_ACTION
 #define LACKS_ERRNO_H 1

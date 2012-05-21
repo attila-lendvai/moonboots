@@ -60,12 +60,44 @@ BINDING(Lib_GetDateTime)
     return pushBCDDateAsLuaTable(L, dateBuffer);
 }
 
-/*
 
 //for timer event
-void  Lib_SetTimer(BYTE TimerNo, WORD Cnt100ms);
-WORD  Lib_CheckTimer(BYTE TimerNo);
-void  Lib_StopTimer(BYTE TimerNo);
+//void  Lib_SetTimer(BYTE TimerNo, WORD Cnt100ms);
+BINDING(Lib_SetTimer)
+{
+    BYTE timer;
+    float timoutInSec;
+    getLuaNumberArgument(1, timer, 0, 4);
+    getLuaNumberArgument(2, timoutInSec, 1, 6553);
+
+    Lib_SetTimer(timer, timoutInSec * 10);
+    return 0;
+}
+
+//WORD  Lib_CheckTimer(BYTE TimerNo);
+BINDING(Lib_CheckTimer)
+{
+    BYTE timer;
+    ushort timeLeftInUnits;
+    getLuaNumberArgument(1, timer, 0, 4);
+
+    timeLeftInUnits = Lib_CheckTimer(timer);
+    lua_pushnumber(L, ((double)timeLeftInUnits) / 10);
+
+    return 1;
+}
+
+//void  Lib_StopTimer(BYTE TimerNo);
+BINDING(Lib_StopTimer)
+{
+    BYTE timer;
+    getLuaNumberArgument(1, timer, 0, 4);
+
+    Lib_StopTimer(timer);
+    return 0;
+}
+
+/*
 
 //for all hardware and software version
 void  Lib_ReadSN(BYTE *SerialNo);
@@ -83,15 +115,29 @@ int   Lib_ShareMemRead(DWORD offset,BYTE *buff,int rlen);
 //BYTE  Lib_KbGetCh(void);
 BINDING(Lib_KbGetCh)
 {
-    lua_pushnumber(L, Lib_KbGetCh());
+    BYTE key = Lib_KbGetCh();
+    lua_pushnumber(L, (lua_Number)key);
     return 1;
+}
+
+///BYTE  Lib_KbUnGetCh(void);
+
+//int   Lib_KbCheck(void);
+BINDING(Lib_KbCheck)
+{
+    lua_pushboolean(L, Lib_KbCheck() < 0 ? 0 : 1);
+    return 1;
+}
+
+//void  Lib_KbFlush(void);
+BINDING(Lib_KbFlush)
+{
+    Lib_KbFlush();
+    return 0;
 }
 
 /*
 
-BYTE  Lib_KbUnGetCh(void);
-int   Lib_KbCheck(void);
-void  Lib_KbFlush(void);
 int   Lib_KbSound(BYTE mode,WORD DlyTimeMs);
 int   Lib_KbMute(BYTE mode);
 int   Lib_KbGetStr(BYTE *str,BYTE minlen, BYTE maxlen,BYTE mode,WORD timeoutsec); 
@@ -105,9 +151,17 @@ BINDING(Lib_LcdCls)
     return 0;
 }
 
+//void Lib_LcdClrLine(BYTE startline, BYTE endline);
+BINDING(Lib_LcdClrLine)
+{
+    BYTE start = luaL_checknumber(L, 1);
+    BYTE end   = luaL_checknumber(L, 2);
+    Lib_LcdClrLine(start, end);
+    return 0;
+}
+
 /*
 
-void Lib_LcdClrLine(BYTE startline, BYTE endline);
 void Lib_LcdSetBackLight(BYTE mode);
 void Lib_LcdSetGray(BYTE level);
 
@@ -436,10 +490,16 @@ static const luaL_Reg josapi_functions[] = {
     BINDING(Lib_Beef)
 
     BINDING(Lib_GetDateTime)
+    BINDING(Lib_SetTimer)
+    BINDING(Lib_CheckTimer)
+    BINDING(Lib_StopTimer)
 
     BINDING(Lib_KbGetCh)
+    BINDING(Lib_KbCheck)
+    BINDING(Lib_KbFlush)
 
     BINDING(Lib_LcdCls)
+    BINDING(Lib_LcdClrLine)
     BINDING(Lib_LcdGotoxy)
     BINDING(Lib_Lcdprintf)
     BINDING(Lib_LcdPrintxy)

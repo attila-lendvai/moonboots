@@ -13,9 +13,8 @@
 
 // malloc is broken in their system, so we set up ourselves a heap and shadow theirs at link time for our codebase
 mspace heap;
-extern char heap_start_address[]; // defined in the ldscript
+extern char malloc_heap_start_address[]; // defined in the ldscript
 
-// define them extern, so they shadow the broken malloc in their libc
 extern void *__wrap_malloc(size_t size)
 {
     void *result = mspace_malloc(heap, size);
@@ -52,6 +51,7 @@ const APP_MSG App_Msg=
 };
 
 LUAMOD_API int luaopen_josapi(lua_State* L);
+LUAMOD_API int luaopen_wlsapi(lua_State* L);
 
 char getKey(void)
 {
@@ -76,7 +76,10 @@ void platformLuaBindingSetupHook(lua_State *L)
         lua_getfield(L, -1, "preload");
 
         lua_pushcfunction(L, luaopen_josapi);
-        lua_setfield(L, -2, "josapi");
+        lua_setfield(L, -2, "justtide.josapi");
+
+        lua_pushcfunction(L, luaopen_wlsapi);
+        lua_setfield(L, -2, "justtide.wlsapi");
 
         lua_pop(L, 2);
     }
@@ -122,18 +125,24 @@ main(void)
     Lib_LcdCls();
 
     // initialize the heap space of our malloc/free replacement
-    void *heap_start = (void *)(((unsigned long)heap_start_address + 7) & (~7));
-    heap_start += 64*1024; // TODO FIXME this is needed to keep things stable. maybe because the stack is at the end of the link space?
+    void *heap_start = malloc_heap_start_address;
+
+    Lib_LcdPrintxy(0, 0, 0, "Heap is at: 0x%x", heap_start);
+
+    heap_start += 32 * 1024; // TODO FIXME this is needed to keep things stable. maybe because the stack is at the end of the link space?
     unsigned long heap_size = 0x20700000 - (unsigned long)heap_start;
     memset(heap_start, 0, heap_size);
     heap = create_mspace_with_base(heap_start, heap_size, 0);
 
-    Lib_LcdPrintxy(0, 8, 0, "heap initialized");
-
     // exit() is broken in their API, so we need to set up a 
     int result;
-    if (result = setjmp(exitJmpEnv))
+    if ((result = setjmp(exitJmpEnv)))
+    {
         return result;
+    }
     else
+    {
+        Lib_LcdPrintxy(0, 8, 0, "Lowlevel init done", heap_start);
         return genericMain();
+    }
 }

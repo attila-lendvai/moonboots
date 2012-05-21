@@ -6,7 +6,7 @@ SECTIONS
   .data :   { *(.data) }
   .bss :    { *(.bss) }
   end = .;
-  heap_start_address = .;
+  malloc_heap_start_address = ( . + 7) & (~ 7);
 /*
   .debug_info     0 : { *(.debug_info)  }
   .debug_line     0 : { *(.debug_line)  }
