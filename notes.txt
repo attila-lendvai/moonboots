@@ -1,0 +1,9 @@
+lua binding policy:
+ - every measure is in its natural unit, e.g. time in seconds
+ - functions and variables are never renamed (not even DelayMS, even though it accepts seconds). obvious prefixes are removed.
+ - functions rise lua errors, unless return codes are part of normal usage (e.g. Wls_CheckNetLink)
+
+
+broken:
+ - on pc1000 string format using %f
+
