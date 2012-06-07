@@ -52,12 +52,20 @@ end
 
 -- displaying long text
 
+function printTable(table)
+   for index, value in ipairs(table) do
+      io.write(index)
+      io.write(": ")
+      print(value)
+   end
+end
+
 function stringToLines(str, maxColumns, indent, indent1)
   local indent = indent or ""
   local indent1 = indent1 or indent
   local maxColumns = maxColumns or (platform.display.width / platform.display.fontWidth)
   local lines = {}
-  local currentLine = indent1
+  local currentLine = {}
 
   local newlineChunks = {}
 
@@ -73,13 +81,14 @@ function stringToLines(str, maxColumns, indent, indent1)
      chunk:gsub("(%s*)()(%S+)()",
                 function (space, start, word, endd)
                    if #currentLine + #space + #word > maxColumns then
-                      table.insert(lines, currentLine)
+                      if #currentLine > 0 then
+                         table.insert(lines, currentLine)
+                      end
                       currentLine = indent..word
                       while #currentLine > maxColumns do
                          table.insert(lines, currentLine:sub(0, maxColumns))
                          currentLine = currentLine:sub(maxColumns + 1)
                       end
-                      -- TODO deal with words longer than maxColumns
                     else
                        currentLine = currentLine..space..word
                    end
@@ -101,15 +110,16 @@ function displayMultilineText(text, atRow, atColumn, windowRows, windowColumns)
 
    local currentLineOffset = 0
    while true do
+      platform.display.clear()
       local currentLineIndex = currentLineOffset
       local currentScreenRow = atRow
       while currentScreenRow <= windowRows do
          if currentLineIndex < #lines then
             local line = lines[currentLineIndex + 1]
             platform.display.printXY(atColumn, currentScreenRow, line)
-            platform.display.print(string.rep(' ', windowColumns - #line))
+            --platform.display.print(string.rep(' ', windowColumns - #line))
          else
-            platform.display.printXY(atColumn, currentScreenRow, string.rep(' ', windowColumns))
+            --platform.display.printXY(atColumn, currentScreenRow, string.rep(' ', windowColumns))
          end
          currentScreenRow = currentScreenRow + 1
          currentLineIndex = currentLineIndex + 1
@@ -169,6 +179,7 @@ mainThread =
                end)
          end
 
+         platform.display.clear()
          platform.display.printXY(1, 1, "Tick: %d.", platform.getMonotonicTime())
 
          if platform.keyboard.hasKeyInBuffer() then
@@ -191,6 +202,13 @@ mainThread =
             --   local body, code, headers, status = http.request("http://dwim.hu/status?from-vega5000")
             --   ctos.LCDTPrintXY(1, 6, status)
             --   ctos.LCDTPrint(body)
+            elseif key == platform.keyboard.key9 then
+               displayMultilineText("a234567890b234567890c234567890d234567890e234567890f234567890g234567890h234567890i234567890j234567890\nk234567890\nl234567890\nm234567890\nn234567890\no234567890\n")
+            elseif key == platform.keyboard.key8 then
+               platform.display.clear()
+               platform.display.printXY(1, 1, "a234567890b234567890c2")
+               platform.display.printXY(1, 4, "a234567890b234567890c")
+               platform.keyboard.getKey()
             elseif key == platform.keyboard.keyCancel then
                -- TODO make it more cooperative with the other threads?
                return "done"
