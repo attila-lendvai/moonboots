@@ -30,9 +30,7 @@ function stringToLines(str, maxColumns, indent, indent1)
      chunk:gsub("(%s*)()(%S+)()",
                 function (space, start, word, endd)
                    if #currentLine + #space + #word > maxColumns then
-                      if firstLine then
-                         firstLine = false
-                      else
+                      if not firstLine then
                          table.insert(lines, currentLine)
                       end
                       currentLine = indent..word
@@ -43,6 +41,7 @@ function stringToLines(str, maxColumns, indent, indent1)
                     else
                        currentLine = currentLine..space..word
                    end
+                   firstLine = false
                 end)
      table.insert(lines, currentLine)
      currentLine = indent
