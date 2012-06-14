@@ -5,7 +5,7 @@
     {                                                                   \
         int ___jos_result = (Lib_##expr);                               \
         if (___jos_result != 0)                                         \
-            return luaL_error(L, "error from '" #expr "', %d", ___jos_result); \
+            return luaL_error(L, "error from '" #expr "', code %d", ___jos_result); \
     }
 
 #define BINDING(name) static int lua__##name(lua_State* L)
@@ -136,13 +136,17 @@ BINDING(Lib_KbFlush)
     return 0;
 }
 
-/*
+///int   Lib_KbSound(BYTE mode,WORD DlyTimeMs);
 
-int   Lib_KbSound(BYTE mode,WORD DlyTimeMs);
-int   Lib_KbMute(BYTE mode);
-int   Lib_KbGetStr(BYTE *str,BYTE minlen, BYTE maxlen,BYTE mode,WORD timeoutsec); 
+//int   Lib_KbMute(BYTE mode);
+BINDING(Lib_KbMute)
+{
+    BYTE muted = lua_checkBoolean(L, 1);
+    Lib_KbMute(! muted);
+    return 0;
+}
 
-*/
+///int   Lib_KbGetStr(BYTE *str,BYTE minlen, BYTE maxlen,BYTE mode,WORD timeoutsec);
 
 //void Lib_LcdCls(void);
 BINDING(Lib_LcdCls)
@@ -334,9 +338,10 @@ BINDING(Lib_ComSendByte)
 BINDING(Lib_ComSend)
 {
     BYTE port = luaL_checknumber(L, 1);
-    BYTE *message = (BYTE *)luaL_checkstring(L, 2);
+    size_t messageLength = 0;
+    BYTE *message = (BYTE *)luaL_checklstring(L, 2, &messageLength);
 
-    JOS_CALL(ComSend(port, message, strlen(message)));
+    JOS_CALL(ComSend(port, message, messageLength));
     return 0;
 }
 
@@ -497,6 +502,7 @@ static const luaL_Reg josapi_functions[] = {
     BINDING(Lib_KbGetCh)
     BINDING(Lib_KbCheck)
     BINDING(Lib_KbFlush)
+    BINDING(Lib_KbMute)
 
     BINDING(Lib_LcdCls)
     BINDING(Lib_LcdClrLine)

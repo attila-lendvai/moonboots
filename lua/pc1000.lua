@@ -3,18 +3,21 @@
 jos = require("justtide.josapi")
 wls = require("justtide.wlsapi")
 
+jos.KbMute(true)
+
 platform.getDate = jos.GetDateTime -- always returns a table
 
-platform._timerOffset = 0
+platform._monotonicTimerOffset = 0
+platform._monotonicTimerId = 0
 platform.getMonotonicTime =
    -- the time between two calls to this function must be less than (65536 / 10) secs, otherwise the counter overflows
    function ()
-     platform._timerOffset = 6553 - jos.CheckTimer(4) + platform._timerOffset
-     jos.SetTimer(4, 6553)
-     return platform._timerOffset
+     platform._monotonicTimerOffset = 6553 - jos.CheckTimer(platform._monotonicTimerId) + platform._monotonicTimerOffset
+     jos.SetTimer(platform._monotonicTimerId, 6553)
+     return platform._monotonicTimerOffset
    end
 
-jos.SetTimer(4, 6553)
+jos.SetTimer(platform._monotonicTimerId, 6553)
 
 platform.sleep = jos.DelayMs
 
@@ -27,7 +30,20 @@ platform.display.fontWidth  = 6
 platform.display.fontHeight = 8
 platform.display.width      = 128
 platform.display.height     = 64
-platform.display.clear      = jos.LcdCls
+platform.display.clear =
+   function (x, y, width, height)
+     local allParametersProvided = x and y and width and height
+     if x and y and width and height then
+        for line = y, y + height, 1 do
+           jos.LcdDrawLine(x, line, x + width - 1, line, 0)
+        end
+     elseif x or y or width or height then
+        error(string.format("platform.display.clear called with %s, %s, %s, %s.", x, y, width, height))
+     else
+        jos.LcdCls()
+     end
+   end
+
 platform.display.print =
    function (message, ...)
      if select('#', ...) > 0 then
@@ -92,20 +108,40 @@ platform.keyboard.keyOk        = jos.KEYOK
 --
 platform.gprs = {}
 platform.gprs.connectionTimeout = 60
-platform.gprs.initiateConnection =
+platform.gprs.currentSimSlot = nil
+
+platform.gprs.initiateConnect =
    function ()
-     wls.Init(wls.GPRS_G610)
-     wls.Reset(wls.GPRS_G610)
-     local simStatus = wls.CheckSim()
-     if simStatus ~= wls.OK then
-        error(string.format("wls.CheckSim: problem with sim card: %s", simStatus), 0)
+     if not platform.gprs.currentSimSlot then
+        platform.gprs.selectSimSlot(1)
      end
+
+     local simStatus = wls.CheckSim()
+     if simStatus == wls.NOSIM then
+        localizedError("No sim card in slot: %s", platform.gprs.currentSimSlot)
+     elseif simStatus ~= wls.OK then
+        localizedError("Unexpected error with sim card: %s, in card slot: %s", simStatus, platform.gprs.currentSimSlot)
+     end
+     yield()
      --wls.InputUidPwd()
-     wls.Dial("internet.vodafone.net")
+     wls.Dial("internet")
+     yield()
+   end
+
+platform.gprs.selectSimSlot =
+   function (simSlot)
+     if simSlot < 1 or simSlot > 2 then
+        error("Sim slot number must be 1 <= sim-slot <= 2")
+     end
+     wls.SelectSim(simSlot)
+     wls.Init(wls.GPRS_G610)
+     -- the reset call takes several seconds, but we don't yield before it to keep it all as an atomic operation.
+     wls.Reset(wls.GPRS_G610)
+     platform.gprs.currentSimSlot = simSlot
    end
 
 -- TODO "After Wls_NetClose() returns WLS_OK, it is possible the netlink does not close really, you should invoke Wls_CheckNetLink to check the netlink."
-platform.gprs.disconnect = wls.NetClose
+platform.gprs.initiateDisconnect = wls.NetClose
 
 platform.gprs.waitUntilConnected =
    function (timeout)
@@ -114,10 +150,11 @@ platform.gprs.waitUntilConnected =
      while true do
         local status = wls.CheckNetLink()
         local elapsedTime = platform.getMonotonicTime() - startTime
+        platform.display.printXY(1, 4, "GPRS elapsed: %s", elapsedTime)
         if status == wls.OK then
            return elapsedTime
         elseif elapsedTime > timeout then
-           error("platform.gprs.waitUntilConnected: timed out", 0)
+           localizedError("GPRS connection timed out after %s seconds.", timeout)
         elseif status == wls.LINKOPENING then
            yield(status, elapsedTime)
         else

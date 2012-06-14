@@ -15,7 +15,7 @@
     {                                                                   \
         USHORT ___ctos_result = (CTOS_##expr);                          \
         if (___ctos_result != d_OK)                                     \
-            return luaL_error(L, "error from CTOS call '" #expr "', %d", (int)___ctos_result); \
+            return luaL_error(L, "error from CTOS call '" #expr "', code %d", (int)___ctos_result); \
     }
 
 static const char lua_checkChar(lua_State *L, int narg)
@@ -24,12 +24,6 @@ static const char lua_checkChar(lua_State *L, int narg)
     if (strlen(charstr) != 1)
         luaL_argerror(L, 1, "char args must be strings of length 1");
     return *charstr;
-}
-
-static const int lua_checkBoolean(lua_State *L, int narg)
-{
-    luaL_checktype(L, narg, LUA_TBOOLEAN);
-    return lua_toboolean(L, narg);
 }
 
 char digit_to_hexa_char(unsigned char digit)

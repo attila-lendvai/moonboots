@@ -129,12 +129,13 @@ main(void)
 
     Lib_LcdPrintxy(0, 0, 0, "Heap is at: 0x%x", heap_start);
 
-    heap_start += 32 * 1024; // TODO FIXME this is needed to keep things stable. maybe because the stack is at the end of the link space?
+    heap_start += 128 * 1024; // TODO FIXME this is needed to keep things stable. maybe because the stack is at the end of the link space?
     unsigned long heap_size = 0x20700000 - (unsigned long)heap_start;
+    heap_size -= 128 * 1024; // TODO FIXME needed? why?
     memset(heap_start, 0, heap_size);
     heap = create_mspace_with_base(heap_start, heap_size, 0);
 
-    // exit() is broken in their API, so we need to set up a 
+    // exit() is broken in the API, so we need to set up our own
     int result;
     if ((result = setjmp(exitJmpEnv)))
     {

@@ -34,4 +34,10 @@ void displayMultilineText(const char *text); // display the given text in a paga
     target = num;                                                       \
   }
 
+static const inline int lua_checkBoolean(lua_State *L, int narg)
+{
+    luaL_checktype(L, narg, LUA_TBOOLEAN);
+    return lua_toboolean(L, narg);
+}
+
 #endif

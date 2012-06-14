@@ -1,17 +1,26 @@
 -- -*- mode: lua; coding: utf-8 -*-
 
--- aliases
-yield = coroutine.yield
-resume = coroutine.resume
-
 -- global variables
 threads = {}
 gprsConnectThread = nil
 gprsStatusThread = nil
 mainThread = nil
 
-function newThread(fn)
-   local co = coroutine.create(fn)
+function newThread(trunk)
+   local co = coroutine.create(function ()
+                                  local errorMessage = nil
+                                  xpcall(trunk,
+                                         function (originalMessage)
+                                            errorMessage = debug.traceback(tostring(originalMessage, 1))
+                                            return originalMessage -- no clue what happens here, just return the original message
+                                         end)
+                                  if errorMessage then
+                                     error(errorMessage)
+                                  else
+                                     return "done"
+                                  end
+                               end)
+--   local co = coroutine.create(trunk)
    table.insert(threads, co)
    return co
 end
@@ -20,6 +29,18 @@ function isThreadAlive(thread)
    return thread and coroutine.status(thread) ~= "dead"
 end
 
+function isToplevelThread()
+   return select(2, coroutine.running())
+end
+
+function waitForEvents()
+   -- ? platform.getMonotonicTime()
+   if isToplevelThread() then
+      platform.sleep(0.1)
+   else
+      yield()
+   end
+end
 
 -- logging
 log = {}
@@ -50,97 +71,6 @@ platform.getDateString = function (dateTableGetter)
    return dateString
 end
 
--- displaying long text
-
-function printTable(table)
-   for index, value in ipairs(table) do
-      io.write(index)
-      io.write(": ")
-      print(value)
-   end
-end
-
-function stringToLines(str, maxColumns, indent, indent1)
-  local indent = indent or ""
-  local indent1 = indent1 or indent
-  local maxColumns = maxColumns or (platform.display.width / platform.display.fontWidth)
-  local lines = {}
-  local currentLine = {}
-
-  local newlineChunks = {}
-
-  str:gsub("([^\n]+)(\n*)",
-           function (chunk, newlines)
-              table.insert(newlineChunks, chunk)
-              for i = 1, #newlines - 1, 1 do
-                 table.insert(newlineChunks, "")
-              end
-           end)
-
-  for index, chunk in pairs(newlineChunks) do
-     chunk:gsub("(%s*)()(%S+)()",
-                function (space, start, word, endd)
-                   if #currentLine + #space + #word > maxColumns then
-                      if #currentLine > 0 then
-                         table.insert(lines, currentLine)
-                      end
-                      currentLine = indent..word
-                      while #currentLine > maxColumns do
-                         table.insert(lines, currentLine:sub(0, maxColumns))
-                         currentLine = currentLine:sub(maxColumns + 1)
-                      end
-                    else
-                       currentLine = currentLine..space..word
-                   end
-                end)
-     table.insert(lines, currentLine)
-     currentLine = indent
-  end
-
-  return lines
-end
-
-function displayMultilineText(text, atRow, atColumn, windowRows, windowColumns)
-   local atRow = atRow or 1
-   local atColumn = atColumn or 1
-   local windowColumns = windowColumns or (platform.display.width / platform.display.fontWidth)
-   local windowRows = windowRows or (platform.display.height / platform.display.fontHeight)
-
-   local lines = stringToLines(text, windowColumns)
-
-   local currentLineOffset = 0
-   while true do
-      platform.display.clear()
-      local currentLineIndex = currentLineOffset
-      local currentScreenRow = atRow
-      while currentScreenRow <= windowRows do
-         if currentLineIndex < #lines then
-            local line = lines[currentLineIndex + 1]
-            platform.display.printXY(atColumn, currentScreenRow, line)
-            --platform.display.print(string.rep(' ', windowColumns - #line))
-         else
-            --platform.display.printXY(atColumn, currentScreenRow, string.rep(' ', windowColumns))
-         end
-         currentScreenRow = currentScreenRow + 1
-         currentLineIndex = currentLineIndex + 1
-      end
-
-      local key = platform.keyboard.getKey()
-      if key == platform.keyboard.keyDown then
-         if currentLineOffset < #lines - windowRows then
-            currentLineOffset = currentLineOffset + 1
-         end
-      elseif key == platform.keyboard.keyUp then
-         if currentLineOffset > 0 then
-            currentLineOffset = currentLineOffset - 1
-         end
-      elseif key == platform.keyboard.keyCancel then
-         break
-      end
-   end
-end
-
-
 --platform.display.clear()
 --platform.display.printXY(1, 1, "Ру́сский язы́к from lua!")
 --platform.keyboard.getKey()
@@ -158,73 +88,112 @@ end
 --platform.display.printXY(1, 4, string.format("type: '%s', hw: '%s', sw: '%s', board: '%s', drv: '%s'", type, moduleHw, moduleSw, board, driver))
 
 function printGPRSStatusAt(x, y)
-   local status = wls.CheckTcpLink()
-   platform.display.printXY(x, y, "Status: %d.", status)
+   local status = wls.CheckNetLink()
+   platform.display.printXY(x, y, "%s %d.", status, platform.getMonotonicTime())
 end
 
 -- main thread
 mainThread =
  newThread(
    function ()
-      while true do
-
-         -- make sure we have a thread alive printing the GPRS status
-         if not isThreadAlive(gprsStatusThread) then
-            gprsStatusThread = newThread(
-               function ()
-                  while true do
-                     printGPRSStatusAt(1, 2)
-                     yield()
-                  end
-               end)
-         end
-
-         platform.display.clear()
-         platform.display.printXY(1, 1, "Tick: %d.", platform.getMonotonicTime())
-
-         if platform.keyboard.hasKeyInBuffer() then
-            local key = platform.keyboard.getKey()
-            if key == platform.keyboard.key1 then
-               if not isThreadAlive(gprsConnectThread) then
-                  gprsConnectThread = newThread(
-                     function ()
-                        platform.display.printXY(1, 3, "GPRS connecting...")
-                        platform.gprs.initiateConnection()
-                        local status, elapsedTime = platform.gprs.waitUntilConnected()
-                        platform.display.printXY(1, 3, "GPRS up in %d.", elapsedTime)
-                        gprsConnectThread = nil
-                        return "done"
-                     end)
+      -- make sure we have a thread alive printing the GPRS status
+      if not isThreadAlive(gprsStatusThread) then
+         gprsStatusThread = newThread(
+            function ()
+               while true do
+                  printGPRSStatusAt(10, 6)
+                  yield()
                end
-            elseif key == platform.keyboard.key2 then
-               platform.gprs.disconnect()
-            --elseif key == platform.keyboard.key3 then
-            --   local body, code, headers, status = http.request("http://dwim.hu/status?from-vega5000")
-            --   ctos.LCDTPrintXY(1, 6, status)
-            --   ctos.LCDTPrint(body)
-            elseif key == platform.keyboard.key9 then
-               displayMultilineText("a234567890b234567890c234567890d234567890e234567890f234567890g234567890h234567890i234567890j234567890\nk234567890\nl234567890\nm234567890\nn234567890\no234567890\n")
-            elseif key == platform.keyboard.key8 then
-               platform.display.clear()
-               platform.display.printXY(1, 1, "a234567890b234567890c2")
-               platform.display.printXY(1, 4, "a234567890b234567890c")
-               platform.keyboard.getKey()
-            elseif key == platform.keyboard.keyCancel then
-               -- TODO make it more cooperative with the other threads?
-               return "done"
-            else
-               platform.display.printXY(1, 4, "Key: %d.", key)
-            end
-         end
-
-         yield()
+            end)
       end
+
+      displayMenu(
+         {{
+             title = "Connect";
+             keyCode = platform.keyboard.key1;
+             trunk = function ()
+                if not isThreadAlive(gprsConnectThread) then
+                   gprsConnectThread = newThread(
+                      function ()
+                         platform.display.printXY(1, 3, "GPRS connecting...")
+                         platform.gprs.initiateConnect()
+                         local elapsedTime = platform.gprs.waitUntilConnected()
+                         platform.display.printXY(1, 3, "GPRS up in %d.", elapsedTime)
+                         gprsConnectThread = nil
+                         return "done"
+                      end)
+                end
+             end;
+          },
+          {
+             title = "Disconnect";
+             keyCode = platform.keyboard.key2;
+             trunk = function ()
+                platform.gprs.initiateDisconnect()
+             end;
+          },
+          {
+             title = "http get";
+             keyCode = platform.keyboard.key3;
+             trunk = function ()
+                newThread(
+                   function ()
+                      wls.MTcpConnect(1, "176.9.81.202", 80)
+                      wls.MTcpSend(1, "GET /status HTTP/1.1\r\nHost: dwim.hu\r\n\r\n")
+                      platform.display.printXY(1, 6, "receiving...")
+                      local result = wls.MTcpRecv(1, 1024, 10)
+                      wls.MTcpClose(1)
+                      displayMultilineText("<start>\n" .. result .. "<end>")
+                   end)
+             end;
+          },
+          {
+             title = "display multiline";
+             keyCode = platform.keyboard.key4;
+             trunk = function ()
+                platform.display.clear()
+                platform.display.printXY(1, 1, string.rep("x", 128/6 * 64/8))
+
+                displayMultilineText("a234567890b234567890c234567890d234567890e234567890f234567890g234567890h234567890i234567890j234567890\n\n\nk234567890\nl234567890\nm234567890\nn234567890\no234567890\n",
+                                     nil, 2, 3, 4, 5)
+             end;
+          },
+          {
+             title = "clear test";
+             keyCode = platform.keyboard.key5;
+             trunk = function ()
+                platform.display.clear()
+                platform.display.printXY(1, 1, string.rep("x", 128/6 * 64/8))
+
+                local fontWidth = platform.display.fontWidth
+                local fontHeight = platform.display.fontHeight
+                platform.display.clear((2 - 1) * fontWidth,
+                                       (3 - 1) * fontHeight,
+                                       4 * fontWidth,
+                                       5 * fontHeight)
+                platform.keyboard.getKey()
+             end;
+          },
+          {
+             title = "clear test2";
+             keyCode = platform.keyboard.key6;
+             trunk = function ()
+                platform.display.clear()
+                platform.display.printXY(1, 1, string.rep("x", 128/6 * 64/8))
+
+                platform.display.clear(6, 16, 24, 40)
+                platform.keyboard.getKey()
+             end;
+          }
+
+         })
    end)
 
 -- circle around the threads and run them one after the other
 while
    # threads > 0 and
    coroutine.status(mainThread) ~= "dead"
+   -- TODO be more cooperative with the other threads?
 do
    for index, thread in pairs(threads) do
       local running, error = resume(thread)
@@ -236,7 +205,7 @@ do
       end
    end
 
-   platform.sleep(0.1)
+   waitForEvents()
 end
 
 
@@ -250,4 +219,53 @@ end
 --ctos.LCDTPrintXY(1, 2, ctos.TickGet())
 --key = ctos.KBDGet()
 
+
+
+         --platform.display.clear()
+         --platform.display.printXY(1, 1, "Tick: %d.", platform.getMonotonicTime())
+
+         --[[
+         if platform.keyboard.hasKeyInBuffer() then
+            local key = platform.keyboard.getKey()
+            if key == platform.keyboard.key1 then
+               if not isThreadAlive(gprsConnectThread) then
+                  gprsConnectThread = newThread(
+                     function ()
+                        platform.display.printXY(1, 3, "GPRS connecting...")
+                        platform.gprs.initiateConnect()
+                        local elapsedTime = platform.gprs.waitUntilConnected()
+                        platform.display.printXY(1, 3, "GPRS up in %d.", elapsedTime)
+                        gprsConnectThread = nil
+                        return "done"
+                     end)
+               end
+            elseif key == platform.keyboard.key2 then
+               platform.gprs.initiateDisconnect()
+            elseif key == platform.keyboard.key3 then
+               newThread(
+                  function ()
+                     wls.MTcpConnect(1, "176.9.81.202", 80)
+                     wls.MTcpSend(1, "GET /status HTTP/1.1\r\nHost: dwim.hu\r\n\r\n")
+                     platform.display.printXY(1, 6, "receiving...")
+                     local result = wls.MTcpRecv(1, 1024, 10)
+                     wls.MTcpClose(1)
+                     displayMultilineText("<start>\n" .. result .. "<end>")
+                  end)
+            elseif key == platform.keyboard.key9 then
+               displayMultilineText("a234567890b234567890c234567890d234567890e234567890f234567890g234567890h234567890i234567890j234567890\n\n\nk234567890\nl234567890\nm234567890\nn234567890\no234567890\n")
+            elseif key == platform.keyboard.key8 then
+               wls.Reset(wls.GPRS_G610)
+            elseif key == platform.keyboard.keyCancel then
+               -- TODO make it more cooperative with the other threads?
+               return "done"
+            else
+               platform.display.printXY(1, 4, "Key: %d.", key)
+            end
+         end
+            --]]
+
+
 -- warning: the last character of this file will be overwritten with a zero, so keep this comment here...
+
+
+
