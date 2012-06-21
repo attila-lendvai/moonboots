@@ -87,7 +87,26 @@ BINDING(Wls_CheckDial)
 int Wls_TcpConnect(uchar *destIP, uchar *destPort);
 int Wls_TcpPreConnect(uchar *destIP, uchar *destPort);
 int Wls_TcpSend(uchar *sendData, ushort sendLen);
-int Wls_TcpRecv(uchar *recvData, ushort *pRecvLen, ushort timeOutMs);
+*/
+
+//int Wls_TcpRecv(uchar *recvData, ushort *pRecvLen, ushort timeOutMs);
+BINDING(Wls_TcpRecv)
+{
+    size_t expectedLength = luaL_checknumber(L, 1);
+    size_t timeout = luaL_checknumber(L, 2) * 1000;
+
+    ushort actualLength = expectedLength;
+    uchar *buffer = malloc(expectedLength);
+
+    WLS_CALL_2(TcpRecv(buffer, &actualLength, timeout),
+               free(buffer));
+
+    lua_pushlstring(L, buffer, actualLength);
+    free(buffer);
+    return 1;
+}
+
+/*
 int Wls_TcpClose(void);
 int Wls_CheckTcpLink(void);
 */
@@ -272,6 +291,7 @@ static const luaL_Reg wlsapi_functions[] = {
     BINDING(Wls_InputUidPwd)
     BINDING(Wls_Dial)
     BINDING(Wls_CheckDial)
+    BINDING(Wls_TcpRecv)
     BINDING(Wls_NetClose)
     BINDING(Wls_CheckNetLink)
     BINDING(Wls_Reset)

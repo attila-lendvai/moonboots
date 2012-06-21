@@ -52,7 +52,7 @@ platform.display.print =
         message = tostring(message)
      end
 
-   jos.Lcdprintf(message)
+     jos.Lcdprintf(message)
    end
 
 platform.display.printXY =
@@ -63,9 +63,9 @@ platform.display.printXY =
         message = tostring(message)
      end
 
-   jos.LcdPrintxy((x - 1) * platform.display.fontWidth,
-                  (y - 1) * platform.display.fontHeight,
-                  0, message)
+     jos.LcdPrintxy((x - 1) * platform.display.fontWidth,
+                    (y - 1) * platform.display.fontHeight,
+                    0, message)
    end
 
 platform.display.gotoXY =
@@ -96,12 +96,35 @@ platform.keyboard.key7 = jos.KEY7
 platform.keyboard.key8 = jos.KEY8
 platform.keyboard.key9 = jos.KEY9
 
--- less general
+platform.keyboard.keyDot       = jos.KEYDOT
+
 platform.keyboard.keyUp        = jos.KEYUP
 platform.keyboard.keyDown      = jos.KEYDOWN
+
+-- less general
 platform.keyboard.keyMenu      = jos.KEYMENU
-platform.keyboard.keyDot       = jos.KEYDOT
 platform.keyboard.keyOk        = jos.KEYOK
+
+--
+-- serial
+--
+platform.serial = {}
+platform.serial.defaultPort = 1
+platform.serial.connect =
+   function (port)
+     local success, errorMessage = pcall(function ()
+                                            jos.ComClose(port)
+                                            jos.ComOpen(port, "115200,8,n,1")
+                                            jos.DelayMs(0.020)
+                                            -- jos.ComReset(port)
+                                         end)
+     return success, errorMessage
+   end
+
+platform.serial.send =
+   function (port, data)
+     jos.ComSend(port, tostring(data))
+   end
 
 --
 -- gprs
@@ -110,12 +133,34 @@ platform.gprs = {}
 platform.gprs.connectionTimeout = 60
 platform.gprs.currentSimSlot = nil
 
+platform.gprs.isConnected =
+   function ()
+      local state = wls.CheckNetLink()
+      if state == wls.OK or state == wls.LINKOPENING then
+         return state
+      else
+         return false
+      end
+   end
+
+platform.gprs.selectSimSlot =
+   function (simSlot)
+     if simSlot < 1 or simSlot > 2 then
+        error("Sim slot number must be 1 <= sim-slot <= 2")
+     end
+     wls.SelectSim(simSlot - 1)
+     wls.Init(wls.GPRS_G610)
+     -- the reset call takes several seconds, but we don't yield before it to keep it all as an atomic operation.
+     wls.Reset(wls.GPRS_G610)
+     platform.gprs.currentSimSlot = simSlot
+   end
+
 platform.gprs.initiateConnect =
    function ()
      if not platform.gprs.currentSimSlot then
         platform.gprs.selectSimSlot(1)
      end
-
+     yield()
      local simStatus = wls.CheckSim()
      if simStatus == wls.NOSIM then
         localizedError("No sim card in slot: %s", platform.gprs.currentSimSlot)
@@ -128,20 +173,12 @@ platform.gprs.initiateConnect =
      yield()
    end
 
-platform.gprs.selectSimSlot =
-   function (simSlot)
-     if simSlot < 1 or simSlot > 2 then
-        error("Sim slot number must be 1 <= sim-slot <= 2")
-     end
-     wls.SelectSim(simSlot)
-     wls.Init(wls.GPRS_G610)
-     -- the reset call takes several seconds, but we don't yield before it to keep it all as an atomic operation.
-     wls.Reset(wls.GPRS_G610)
-     platform.gprs.currentSimSlot = simSlot
-   end
-
 -- TODO "After Wls_NetClose() returns WLS_OK, it is possible the netlink does not close really, you should invoke Wls_CheckNetLink to check the netlink."
-platform.gprs.initiateDisconnect = wls.NetClose
+platform.gprs.initiateDisconnect =
+   function ()
+     wls.NetClose()
+     wls.Reset(wls.GPRS_G610)
+   end
 
 platform.gprs.waitUntilConnected =
    function (timeout)
@@ -163,26 +200,16 @@ platform.gprs.waitUntilConnected =
      end
    end
 
-
---
--- serial
---
-platform.serial = {}
-platform.serial.defaultPort = 1
-platform.serial.connect =
-   function (port)
-     local success, errorMessage = pcall(function ()
-                                            jos.ComClose(port)
-                                            jos.ComOpen(port, "115200,8,n,1")
-                                            jos.DelayMs(0.020)
-                                            -- jos.ComReset(port)
-                                         end)
-     return success, errorMessage
-   end
-
-platform.serial.send =
-   function (port, data)
-     jos.ComSend(port, tostring(data))
+platform.gprs.ensureConnected =
+   function (timeout)
+     local state = platform.gprs.isConnected()
+     local timeout = timeout or platform.gprs.connectionTimeout
+     if not state then
+        platform.gprs.initiateConnect()
+        platform.gprs.waitUntilConnected(timeout)
+     elseif state == wls.LINKOPENING then
+        platform.gprs.waitUntilConnected(timeout)
+     end
    end
 
 --
