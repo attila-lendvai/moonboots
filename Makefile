@@ -7,7 +7,6 @@ OBJECTDIR ?= build
 MKDIR = mkdir
 CP = cp
 LUA-DIR = ../$(PLATFORM)/dependencies/lua-5.2.0/
-LUASOCKET-DIR = ../$(PLATFORM)/dependencies/luasocket2-hg/
 SQUISH = ../dependencies/lua-5.1.5/src/lua ../dependencies/squish/squish
 
 BASE_OBJECTFILES = \
@@ -35,7 +34,7 @@ endif
 
 OBJECTFILES ?= $(BASE_OBJECTFILES)
 
-CFLAGS += -std=c99 -O3 -Wall -DLUA_COMPAT_MODULE -I. -I"${LUA-DIR}/src/" -I"${LUASOCKET-DIR}/src/"
+CFLAGS += -std=c99 -O3 -Wall -DLUA_COMPAT_MODULE -I. -I"${LUA-DIR}/src/"
 
 PATH := ../$(PLATFORM)/gcc/bin/:${PATH}
 
@@ -69,9 +68,9 @@ $(OBJECTDIR)/pc1000/%.o: pc1000/%.s
 
 # Vega5000
 $(OBJECTDIR)/vega5000/app/bootstrap: ${OBJECTFILES}
-	$(CC) -L . -L"${SDKV5LIB}" -L"${LUA-DIR}/src/" -L"${LUASOCKET-DIR}/src/" -o $@ ${OBJECTFILES} -Wl,-Bstatic -llua -lmime -lsocket -Wl,-Bdynamic ${LDLIBSOPTIONS}
+	$(CC) -L . -L"${SDKV5LIB}" -L"${LUA-DIR}/src/" -o $@ ${OBJECTFILES} -Wl,-Bstatic -llua -Wl,-Bdynamic ${LDLIBSOPTIONS}
 	mipsel-linux-uclibc-strip $@
-	rsync --recursive --exclude "*.so" ../vega5000/dependencies/install/share/lua/5.2/ build/vega5000/app/lua/
+#	rsync --recursive --exclude "*.so" ../vega5000/dependencies/install/share/lua/5.2/ build/vega5000/app/lua/
 
 $(OBJECTDIR)/vega5000/vega5000/main.o: vega5000/main.c
 	$(COMPILE.c) -o $@ vega5000/main.c

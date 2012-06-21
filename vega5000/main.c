@@ -4,9 +4,6 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
-#include "luasocket.h"
-#include "mime.h"
-
 #include "ctosapi.h"
 #include "bootstrap.h"
 
@@ -39,12 +36,6 @@ void platformLuaBindingSetupHook(lua_State *L)
 
         lua_pushcfunction(L, luaopen_ctosapi);
         lua_setfield(L, -2, "castles.ctosapi");
-
-        lua_pushcfunction(L, luaopen_socket_core);
-        lua_setfield(L, -2, "socket.core");
-
-        lua_pushcfunction(L, luaopen_mime_core);
-        lua_setfield(L, -2, "mime.core");
 
         lua_pop(L, 2);
     }
