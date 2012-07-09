@@ -2,6 +2,7 @@
 
 -- global variables
 threads = {}
+fullscreenThreads = {}
 gprsConnectThread = nil
 gprsStatusThread = nil
 mainThread = nil
@@ -28,6 +29,21 @@ function newThread(trunk)
                                end)
    table.insert(threads, co)
    return co
+end
+
+function newFullscreenThread(trunk)
+   local co = newThread(trunk)
+   table.insert(fullscreenThreads, 1, co)
+   return co
+end
+
+function isFullscreenThread(thread)
+   return table.find(fullscreenThreads, thread)
+end
+
+function isActiveFullscreenThread(thread)
+   local index = isFullscreenThread(thread)
+   return index and index == 1
 end
 
 function isThreadAlive(thread)
@@ -226,13 +242,25 @@ while
    coroutine.status(mainThread) ~= "dead"
    -- TODO be more cooperative with the other threads?
 do
+   -- get rid of dead fullscreen threads
+   for index, thread in pairs(fullscreenThreads) do
+      if not isThreadAlive(thread) then
+         table.remove(fullscreenThreads, index)
+      end
+   end
+
+   -- see if we have anyone to rune
    for index, thread in pairs(threads) do
-      local running, error = resume(thread)
-      if error == "done" then
-         table.remove(threads, index)
-      elseif not running then
-         table.remove(threads, index)
-         displayMultilineText("Error in a thread:\n"..error)
+      local shouldRun = not isFullscreenThread(thread) or isActiveFullscreenThread(thread)
+
+      if shouldRun then
+         local running, resultOrError = resume(thread)
+         if resultOrError == "done" then
+            table.remove(threads, index)
+         elseif not running then
+            table.remove(threads, index)
+            displayMultilineText("Error reached toplevel:\n"..resultOrError)
+         end
       end
    end
 
