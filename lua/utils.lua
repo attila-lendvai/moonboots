@@ -147,3 +147,49 @@ function displayMenu(entries)
 
    displayMultilineText(text, keyMap)
 end
+
+-- condition handling
+
+function throw(type, message, ...)
+   local condition = {}
+   condition.type = type
+   condition.message = message
+   condition.extraArguments = {...}
+   error(condition)
+end
+
+function catch(body, handlers)
+   local condition
+   local run, result = xpcall(body,
+                              function (object)
+                                 -- xpcall calls the handler body in the scope of the handler. so we simply store the condition and quit
+                                 -- to avoid re-entering the handler in case of an error, and/or to allow re-signalling from the handlers...
+                                 condition = object
+                              end)
+   if condition then
+      local handler = handlers["default"]
+      if type(condition) == "table" and
+         type(condition.type) == "string" and
+         handlers[condition.type]
+      then
+         handler = handlers[condition.type]
+      end
+
+      if handler then
+         local handlerResult = handler(condition)
+         if handlerResult then
+            -- return whatever the handler returned (usually true)
+            return false, handlerResult
+         end
+      end
+
+      -- wasn't handled by any of the handlers, so let's resignal it
+      error(condition)
+   else
+      return true, result
+   end
+end
+
+function throwUserMessage(message, ...)
+   throw("userMessage", string.format(message, ...))
+end

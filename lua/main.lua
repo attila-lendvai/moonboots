@@ -8,17 +8,23 @@ mainThread = nil
 
 function newThread(trunk)
    local co = coroutine.create(function ()
-                                  local errorMessage = nil
-                                  xpcall(trunk,
-                                         function (originalMessage)
-                                            errorMessage = debug.traceback(tostring(originalMessage, 1))
-                                            return originalMessage -- no clue what happens here, just return the original message
-                                         end)
-                                  if errorMessage then
-                                     error(errorMessage)
-                                  else
-                                     return "done"
-                                  end
+                                  catch(trunk,
+                                        {
+                                           userMessage = function (condition)
+                                              -- TODO FIXME localize, etc...
+                                              displayMultilineText("Error:\n"..condition.message)
+                                              return true
+                                           end;
+
+                                           default = function (condition)
+                                              local prefix = tostring(condition)
+                                              if type(condition) == "table" then
+                                                 prefix = tableToString(condition)
+                                              end
+                                              error(debug.traceback(prefix))
+                                           end
+                                        })
+                                  return "done"
                                end)
    table.insert(threads, co)
    return co
