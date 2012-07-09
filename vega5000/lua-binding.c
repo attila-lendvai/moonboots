@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <malloc.h>
 
 #include <lua.h>
 #include <lauxlib.h>
 
+#include "bootstrap.h"
 #include "ctosapi.h"
 
 /// TODO: comments marked with three /// means that it's not converted yet
@@ -15,6 +17,13 @@
     {                                                                   \
         USHORT ___ctos_result = (CTOS_##expr);                          \
         if (___ctos_result != d_OK)                                     \
+            return luaL_error(L, "error from CTOS call '" #expr "', code %d", (int)___ctos_result); \
+    }
+
+#define CTOS_CALL_2(expr, errorCode2)                                   \
+    {                                                                   \
+        USHORT ___ctos_result = (CTOS_##expr);                          \
+        if (___ctos_result != d_OK && ___ctos_result != errorCode2)     \
             return luaL_error(L, "error from CTOS call '" #expr "', code %d", (int)___ctos_result); \
     }
 
@@ -69,7 +78,7 @@ LUAMOD_API int luaopen_ctosapi(lua_State* L)
     {
         const luaL_Reg* copy = copyLuaFunctionTable(ctosapi_functions, "CTOS_");
         luaL_newlib(L, (luaL_Reg*)copy);
-        free(copy);
+        free((void *)copy);
     }
 
     // constants

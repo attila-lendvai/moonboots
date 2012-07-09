@@ -33,20 +33,26 @@ USHORT CTOS_BackLightSetEx(BYTE bDevice, BYTE bOnOff, DWORD dwDuration);
 // Real Time Clock define for RTC functions
 typedef struct
 {
-	BYTE    bSecond;
-	BYTE    bMinute;
-	BYTE    bHour;
-	BYTE    bDay;
-	BYTE    bMonth;
-	BYTE    bYear;
-	BYTE    bDoW;	
+        BYTE    bSecond;
+        BYTE    bMinute;
+        BYTE    bHour;
+        BYTE    bDay;
+        BYTE    bMonth;
+        BYTE    bYear;
+        BYTE    bDoW;
 } CTOS_RTC;
 
 
 USHORT CTOS_RTCGet (CTOS_RTC *pstRTC);
 USHORT CTOS_RTCSet (CTOS_RTC *pstRTC);
-void CTOS_Delay(ULONG ulMSec); // in 1 ms
 */
+
+//void CTOS_Delay(ULONG ulMSec); // in 1 ms
+BINDING(CTOS_Delay)
+{
+    CTOS_Delay(luaL_checknumber(L, 1) * 1000);
+    return 0;
+}
 
 //ULONG CTOS_TickGet(void); // in 10 ms
 BINDING(CTOS_TickGet)
@@ -78,10 +84,10 @@ USHORT CTOS_Sound(USHORT usFreq, USHORT usDuration); // in 10 ms
 
 typedef struct
 {
-	ULONG digest[5];            // Message digest 
-	ULONG countLo, countHi;     // 64-bit bit count 
-	ULONG data[16];             // SHS data buffer 
-	int Endianness;
+        ULONG digest[5];            // Message digest
+        ULONG countLo, countHi;     // 64-bit bit count
+        ULONG data[16];             // SHS data buffer
+        int Endianness;
 }SHA_CTX;
 
 USHORT CTOS_RSA(BYTE *baModulus, USHORT usModulousLen, BYTE *baExponent, USHORT usExponentLen, BYTE *baData, BYTE *baResult);
@@ -100,51 +106,51 @@ USHORT CTOS_MAC (BYTE *baKey, BYTE bKeyLen, BYTE *baICV, BYTE *baData, USHORT us
 //=============================================================================================================================
 
 typedef struct{
-	BYTE EncMode;
-	WORD TimeOut;
-	BYTE MaxLEN;
-	BYTE MinLEN;
-	BYTE MK_Index;
-	BYTE LenPAN;
-	BYTE *sPAN;
-	BYTE LenSK;
-	BYTE *sSK;
-	BYTE *sLine1Msg;
-	BYTE *sLine2Msg;
-	BYTE *sProcMsg;
-	BYTE NULLPIN;
-	BYTE LenPIN;
-	BYTE *sEPB;
-	BYTE *sKSN;
-	BYTE PBType;
-	int (*piTestCancel)(void);
+        BYTE EncMode;
+        WORD TimeOut;
+        BYTE MaxLEN;
+        BYTE MinLEN;
+        BYTE MK_Index;
+        BYTE LenPAN;
+        BYTE *sPAN;
+        BYTE LenSK;
+        BYTE *sSK;
+        BYTE *sLine1Msg;
+        BYTE *sLine2Msg;
+        BYTE *sProcMsg;
+        BYTE NULLPIN;
+        BYTE LenPIN;
+        BYTE *sEPB;
+        BYTE *sKSN;
+        BYTE PBType;
+        int (*piTestCancel)(void);
 } CTOS_stDefEncPINStruc;
 
 typedef struct{
-	BYTE *baData;
-	BYTE bMK_Index;
-	BYTE bLenSK;
-	BYTE *baSK;
-	BYTE *baEDB;
+        BYTE *baData;
+        BYTE bMK_Index;
+        BYTE bLenSK;
+        BYTE *baSK;
+        BYTE *baEDB;
 } CTOS_stDefEncDataStruc;
 
 typedef struct{
-	WORD iMLen;
-	BYTE bELen;
-	BYTE *baM;
-	BYTE *baD;
-	BYTE *baE;
+        WORD iMLen;
+        BYTE bELen;
+        BYTE *baM;
+        BYTE *baD;
+        BYTE *baE;
 } CTOS_stDefRSACertKey;
 
 typedef struct{
-	BYTE bMode;
-	BYTE bMK_Index;
-	BYTE bLenSK;
-	BYTE *baSK;
-	BYTE *baICV;
-	USHORT usDataLen;
-	BYTE *baData;
-	BYTE *baMAC;
+        BYTE bMode;
+        BYTE bMK_Index;
+        BYTE bLenSK;
+        BYTE *baSK;
+        BYTE *baICV;
+        USHORT usDataLen;
+        BYTE *baData;
+        BYTE *baMAC;
 } CTOS_stDefMACStruc;
 
 typedef struct{
@@ -183,8 +189,8 @@ typedef struct
 
 typedef struct
 {
-	BYTE bMK_Index;
-	BYTE bKey_Flag;
+        BYTE bMK_Index;
+        BYTE bKey_Flag;
     BYTE *sIK;
     BYTE *sKSN;
 } CTOS_stSaveDUKPTIK;
@@ -203,11 +209,11 @@ typedef struct {
 }CTOS_stGenKeyCertifyed;
 
 typedef struct
-{	
-	BYTE Index;
-	BYTE RFU;
-	BYTE KeyLen;    
-	BYTE CVLen;
+{
+        BYTE Index;
+        BYTE RFU;
+        BYTE KeyLen;
+        BYTE CVLen;
     BYTE *sComp1;
     BYTE *sComp2;
     BYTE *sComp3;
@@ -215,15 +221,15 @@ typedef struct
 }SAVE_KPK;
 
 typedef struct
-{	
-	BYTE MK_Index;
-	BYTE KeyFlag;
+{
+        BYTE MK_Index;
+        BYTE KeyFlag;
     BYTE MK_KeyLen;
     BYTE KPK_Index;
-    BYTE *EMK;    
+    BYTE *EMK;
     BYTE *sCV;
     BYTE CVLen;
-    BYTE RFU[3]; 
+    BYTE RFU[3];
 }SAVE_MK_BY_KPK;
 
 
@@ -260,18 +266,18 @@ void CTOS_KMSbKillAPKeys(BYTE bAPID);
 
 typedef struct
 {
-	BYTE Filename[15];
-	ULONG Filesize;
-	BYTE FileAttrib;
-	ULONG UID;
+        BYTE Filename[15];
+        ULONG Filesize;
+        BYTE FileAttrib;
+        ULONG UID;
 } CTOS_FILE_ATTRIB;
 
 typedef struct
 {
-	BYTE  Filename[15];
-	ULONG Filesize;
-	BYTE  FileStorageType;
-	BYTE  RFU[4];
+        BYTE  Filename[15];
+        ULONG Filesize;
+        BYTE  FileStorageType;
+        BYTE  RFU[4];
 } CTOS_FILE_INFO;
 
 USHORT CTOS_FileOpen(BYTE* caFileName, BYTE bStorageType, ULONG* pulFileHandle);
@@ -311,8 +317,6 @@ BINDING(CTOS_RS232Open)
     const char *parity = luaL_checkstring(L, 3);
     BYTE dataBits      = luaL_checknumber(L, 4);
     BYTE stopBits      = luaL_checknumber(L, 5);
-
-    // TODO this does not show up propery?! luaL_error(L, "CTOS_RS232Open auto errororororororororo delme")
 
     if (strlen(parity) > 1)
         return luaL_error(L, "CTOS_RS232Open: parity argument must be a string of length 1");
@@ -531,9 +535,10 @@ BINDING(CTOS_TCP_GPRSOpen)
     const char *password   = luaL_checkstring(L, 4);
 
     if (ipAsString && strlen(ipAsString) > 0)
-        return luaL_error(L, "The Lua binding for CTOS_TCP_GPRSOpen does not support the IP argument");
+        return luaL_error(L, "The Lua binding for CTOS_TCP_GPRSOpen does not support the IP argument yet");
 
-    CTOS_CALL(TCP_GPRSOpen(ip, (char *)apn, (char *)username, (char *)password));
+    CTOS_CALL_2(TCP_GPRSOpen(ip, (char *)apn, (char *)username, (char *)password),
+                d_TCP_IO_PROCESSING);
 
     return 0;
 }
@@ -548,7 +553,8 @@ BINDING(CTOS_TCP_GPRSClose)
 //USHORT CTOS_TCP_GPRSClose_A(void);
 BINDING(CTOS_TCP_GPRSClose_A)
 {
-    CTOS_CALL(TCP_GPRSClose_A());
+    CTOS_CALL_2(TCP_GPRSClose_A(),
+                d_TCP_IO_PROCESSING);
     return 0;
 }
 
@@ -566,12 +572,196 @@ BINDING(CTOS_TCP_GPRSGetIP)
     return 1;
 }
 
-/*
-USHORT CTOS_TCP_GPRSConnectEx(BYTE *bSocket, BYTE *baIP, USHORT usPort);
-USHORT CTOS_TCP_GPRSDisconnect(BYTE bSocket);
-USHORT CTOS_TCP_GPRSTx(BYTE bSocket, BYTE *baBuffer, USHORT usLen);
-USHORT CTOS_TCP_GPRSRx(BYTE bSocket, BYTE *baBuffer, USHORT *usLen);
-*/
+//USHORT CTOS_TCP_GPRSConnectEx(BYTE *bSocket, BYTE *baIP, USHORT usPort);
+BINDING(CTOS_TCP_GPRSConnectEx)
+{
+    BYTE socket = 0;
+    const char *ipAsString = luaL_checkstring(L, 1);
+    USHORT port = luaL_checknumber(L, 2);
+    BYTE ip[4] = {0, 0, 0, 0};
+    int timeout = luaL_checknumber(L, 3);
+    float startTime = ((float)CTOS_TickGet()) / 100;
+
+    int a1, a2, a3, a4;
+    int count = sscanf(ipAsString, "%d.%d.%d.%d", &a1, &a2, &a3, &a4);
+    if (count != 4)
+        return luaL_error(L, "error from CTOS_TCP_GPRSConnectEx, can't parse '%s' as an ip address", ipAsString);
+    ip[0] = a1;
+    ip[1] = a2;
+    ip[2] = a3;
+    ip[3] = a4;
+
+    CTOS_CALL_2(TCP_GPRSConnectEx(&socket, ip, port),
+                d_TCP_IO_PROCESSING);
+
+    while (1)
+    {
+        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            return luaL_error(L, "CTOS_TCP_GPRSConnectEx timed out");
+        }
+
+        DWORD state = 0;
+        USHORT result = CTOS_TCP_GPRSStatus(&state);
+
+        if (result == d_TCP_IO_PROCESSING ||
+            state & TCP_GPRS_STATE_CONNECTING)
+        {
+            DWORD event = 0;
+            CTOS_SystemWait(50, d_EVENT_MODEM, &event);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    lua_pushnumber(L, socket);
+    return 1;
+}
+
+
+//USHORT CTOS_TCP_GPRSDisconnect(BYTE bSocket);
+BINDING(CTOS_TCP_GPRSDisconnect)
+{
+    BYTE socket = luaL_checknumber(L, 1);
+    int timeout = luaL_checknumber(L, 2);
+    float startTime = ((float)CTOS_TickGet()) / 100;
+
+    CTOS_CALL_2(TCP_GPRSDisconnect(socket),
+                d_TCP_IO_PROCESSING);
+
+    while (1)
+    {
+        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            return luaL_error(L, "CTOS_TCP_GPRSDisconnect timed out");
+        }
+
+        DWORD state = 0;
+        USHORT result = CTOS_TCP_GPRSStatus(&state);
+
+        if (result == d_TCP_IO_PROCESSING ||
+            state & TCP_GPRS_STATE_DISCONNECTING)
+        {
+            DWORD event = 0;
+            CTOS_SystemWait(50, d_EVENT_MODEM, &event);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+//USHORT CTOS_TCP_GPRSTx(BYTE bSocket, BYTE *baBuffer, USHORT usLen);
+BINDING(CTOS_TCP_GPRSTx)
+{
+    int socket = luaL_checknumber(L, 1);
+    size_t dataLength = 0;
+    size_t maxChunkLength = 1460;
+    const BYTE *data = luaL_checklstring(L, 2, &dataLength);
+    int timeout = luaL_checknumber(L, 3);
+    float startTime = ((float)CTOS_TickGet()) / 100;
+
+    while (dataLength > 0)
+    {
+        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            return luaL_error(L, "CTOS_TCP_GPRSTx timed out");
+        }
+
+        size_t chunkLength = maxChunkLength;
+        if (dataLength > maxChunkLength)
+        {
+            dataLength -= maxChunkLength;
+        }
+        else
+        {
+            chunkLength = dataLength;
+            dataLength = 0;
+        }
+
+        CTOS_CALL_2(TCP_GPRSTx(socket, (BYTE *)data, (USHORT)chunkLength),
+                    d_TCP_IO_PROCESSING);
+
+        data += chunkLength;
+    }
+
+    while (1)
+    {
+        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            return luaL_error(L, "CTOS_TCP_GPRSTx timed out");
+        }
+
+        DWORD state = 0;
+        USHORT result = CTOS_TCP_GPRSStatus(&state);
+
+        if (result == d_TCP_IO_PROCESSING ||
+            state & TCP_GPRS_STATE_SENDING)
+        {
+            DWORD event = 0;
+            CTOS_SystemWait(50, d_EVENT_MODEM, &event);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+//USHORT CTOS_TCP_GPRSRx(BYTE bSocket, BYTE *baBuffer, USHORT *usLen);
+BINDING(CTOS_TCP_GPRSRx)
+{
+    BYTE socket = luaL_checknumber(L, 1);
+    USHORT expectedLength = luaL_checknumber(L, 2);
+    int timeout = luaL_checknumber(L, 3);
+
+    USHORT actualLength = expectedLength;
+    BYTE *buffer = malloc(expectedLength);
+    float startTime = ((float)CTOS_TickGet()) / 100;
+
+    {
+        USHORT result = CTOS_TCP_GPRSRx(socket, buffer, &actualLength);
+        if (result != d_OK && result != d_TCP_IO_PROCESSING)
+        {
+            free(buffer);
+            return luaL_error(L, "error from CTOS call 'CTOS_TCP_GPRSRx', code %d", (int)result);
+        }
+    }
+
+    while (1)
+    {
+        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            free(buffer);
+            return luaL_error(L, "CTOS_TCP_GPRSRx timed out");
+        }
+
+        DWORD state = 0;
+        USHORT result = CTOS_TCP_GPRSStatus(&state);
+
+        if (result == d_TCP_IO_PROCESSING ||
+            state & TCP_GPRS_STATE_RECEIVING)
+        {
+            DWORD event = 0;
+            CTOS_SystemWait(50, d_EVENT_MODEM, &event);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    lua_pushlstring(L, buffer, actualLength);
+    free(buffer);
+    return 1;
+}
 
 //USHORT CTOS_TCP_GPRSStatus (DWORD* pdwState);
 BINDING(CTOS_TCP_GPRSStatus)
@@ -580,8 +770,7 @@ BINDING(CTOS_TCP_GPRSStatus)
     USHORT result = CTOS_TCP_GPRSStatus(&state);
 
     // the return value can also holds important information in this case, so we return it instead of using CTOS_CALL
-    if ( ! (result == d_OK || result == d_TCP_IO_PROCESSING))
-        return luaL_error(L, "error from CTOS call 'CTOS_TCP_GPRSStatus(&state)': %d", (unsigned int)result);
+    // also, it may return with stuff like d_TCP_GPRS_PPP_CONNECT_FAILED (?!), so forget the error code checking here...
 
     lua_pushnumber(L, state);
     lua_pushnumber(L, result);
@@ -607,7 +796,7 @@ USHORT CTOS_TCP_SetRxTO(ULONG ulTime);
 USHORT CTOS_TCP_GetRxTO(ULONG *ulTime);
 USHORT CTOS_TCP_SetRetryCounter(USHORT usTime);
 USHORT CTOS_TCP_GetRetryCounter(USHORT *usTime);
-USHORT CTOS_PPP_SetTO(ULONG ulTime);	
+USHORT CTOS_PPP_SetTO(ULONG ulTime);
 USHORT CTOS_PPP_GetTO(ULONG *ulTime);
 USHORT CTOS_PPP_SetRetryCounter(USHORT usTime);
 USHORT CTOS_PPP_GetRetryCounter(USHORT *usTime);
@@ -740,12 +929,53 @@ USHORT CTOS_GSMSignalQuality(BYTE *bpStrength);
 USHORT CTOS_GSMSetBAND(BYTE bID);
 USHORT CTOS_GSMGetBAND(BYTE *bID);
 
-//SIM Commands
-USHORT CTOS_GSMSelectSIM(BYTE bID);
-USHORT CTOS_GSMGetCurrentSIM(BYTE* bID);
-USHORT CTOS_SIMGetIMSI(BYTE *pbInfo);	//USHORT CTOS_SIMGetIMSI(char *caInfo);
-USHORT CTOS_SIMCheckReady(void);
+*/
 
+//SIM Commands
+//USHORT CTOS_GSMSelectSIM(BYTE bID);
+BINDING(CTOS_GSMSelectSIM)
+{
+    CTOS_CALL(GSMSelectSIM(luaL_checknumber(L, 1)));
+    return 0;
+}
+
+//USHORT CTOS_GSMGetCurrentSIM(BYTE* bID);
+BINDING(CTOS_GSMGetCurrentSIM)
+{
+    BYTE sim;
+    CTOS_CALL(GSMGetCurrentSIM(&sim));
+
+    lua_pushnumber(L, sim);
+    return 1;
+}
+
+//USHORT CTOS_SIMGetIMSI(BYTE *pbInfo);	//USHORT CTOS_SIMGetIMSI(char *caInfo);
+BINDING(CTOS_SIMGetIMSI)
+{
+    BYTE imsi[16];
+    CTOS_CALL(SIMGetIMSI(imsi));
+
+    lua_pushstring(L, imsi);
+    return 1;
+}
+
+//USHORT CTOS_SIMCheckReady(void);
+BINDING(CTOS_SIMCheckReady)
+{
+    USHORT result = CTOS_SIMCheckReady();
+
+    if (result == d_GSM_SIM_READY)
+        lua_pushboolean(L, 1);
+    else if (result == d_GSM_SIM_NOT_READY)
+        lua_pushboolean(L, 0);
+    else
+        return luaL_error(L, "error from CTOS call CTOS_SIMCheckReady, %d", (int)result);
+
+    return 1;
+}
+
+
+/*
 //PIN
 USHORT CTOS_PINGetAuthStatus(void);
 USHORT CTOS_PINVerify(BYTE bPinType, BYTE *baPin, BYTE bPinLen);
@@ -801,7 +1031,20 @@ USHORT  CTOS_TMSGetUpdateResult(void);
 //
 //=============================================================================================================================
 
-USHORT CTOS_LanguageConfig(USHORT usLanguage,USHORT usFontSize,USHORT usFontStyle, BOOL boSetDefault);
+*/
+
+//USHORT CTOS_LanguageConfig(USHORT usLanguage,USHORT usFontSize,USHORT usFontStyle, BOOL boSetDefault);
+BINDING(CTOS_LanguageConfig)
+{
+    USHORT language  = luaL_checknumber(L, 1);
+    USHORT fontSize  = luaL_checknumber(L, 2);
+    USHORT fontStyle = luaL_checknumber(L, 3);
+    BOOL setDefault  = lua_checkBoolean(L, 4);
+    CTOS_CALL(LanguageConfig(language, fontSize, fontStyle, setDefault));
+    return 0;
+}
+
+/*
 USHORT CTOS_LanguageLCDFontSize(USHORT usFontSize,USHORT usFontStyle);
 USHORT CTOS_LanguagePrinterFontSize(USHORT usFontSize,USHORT usFontStyle, USHORT usSetType);
 USHORT CTOS_LanguageInfo(USHORT usIndex,USHORT* pusLanguage,USHORT* pusFontSize,USHORT* pusFontStyle);
@@ -818,7 +1061,7 @@ USHORT CTOS_LanguageLCDGetFontInfo(USHORT* usASCIIFontID,USHORT* usFontSize,USHO
 //=============================================================================================================================
 
 // For CTOS_LCDGMenu().
-enum TAttribute { 
+enum TAttribute {
     _taNormal  = 0x00,
     _taReverse = 0x01,
     //_taClrOne  = 0x02,
@@ -828,7 +1071,7 @@ enum TAttribute {
     _taDelay   = 0x20
 };
 // For CTOS_LCDTMenu().
-enum TAttribute_T { 
+enum TAttribute_T {
     _taTNormal  = 0x00,
     _taTReverse = 0x01,
     //_taTClrOne  = 0x02,
@@ -895,10 +1138,29 @@ BINDING(CTOS_LCDGTextOut)
     return 0;
 }
 
+//USHORT CTOS_LCDGSetBox(USHORT usX, USHORT usY, USHORT usXSize, USHORT usYSize, BYTE bFill);
+BINDING(CTOS_LCDGSetBox)
+{
+    USHORT x        = luaL_checknumber(L, 1);
+    USHORT y        = luaL_checknumber(L, 2);
+    USHORT width    = luaL_checknumber(L, 3);
+    USHORT height   = luaL_checknumber(L, 4);
+    BYTE fill       = luaL_checknumber(L, 5);
+
+    CTOS_CALL(LCDGSetBox(x, y, width, height, fill));
+    return 0;
+}
+
+///USHORT CTOS_LCDGShowPic(USHORT usX, USHORT usY, BYTE* baPat, USHORT usPatLen, USHORT usXSize);
+
+//USHORT CTOS_LCDGClearWindow(void);
+BINDING(CTOS_LCDGClearWindow)
+{
+    CTOS_CALL(LCDGClearWindow());
+    return 0;
+}
+
 /*
-USHORT CTOS_LCDGSetBox(USHORT usX, USHORT usY, USHORT usXSize, USHORT usYSize, BYTE bFill);
-USHORT CTOS_LCDGShowPic(USHORT usX, USHORT usY, BYTE* baPat, USHORT usPatLen, USHORT usXSize);
-USHORT CTOS_LCDGClearWindow(void);
 USHORT CTOS_LCDGMoveWindow(USHORT usOffset);
 USHORT CTOS_LCDGGetWindowOffset(void);
 USHORT CTOS_LCDGMenu(BYTE bAttribute, STR *pbaHeaderString, STR *pcaItemString);
@@ -1083,11 +1345,11 @@ BINDING(CTOS_KBDSetResetEnable)
 //=============================================================================================================================
 typedef struct
 {
-	USHORT FontSize;
-	USHORT X_Zoom;
-	USHORT Y_Zoom;
-	USHORT X_Space;
-	USHORT Y_Space;
+        USHORT FontSize;
+        USHORT X_Zoom;
+        USHORT Y_Zoom;
+        USHORT X_Space;
+        USHORT Y_Space;
 } CTOS_FONT_ATTRIB;
 
 USHORT CTOS_PrinterPutString(UCHAR* baBuf);
@@ -1142,9 +1404,9 @@ USHORT CTOS_44x2ReadProtectionMemory(UCHAR* baBuf);
 USHORT CTOS_44x2SetProtectionBit(UCHAR bAddr);
 USHORT CTOS_44x2ReadSecurityMemory(UCHAR* baBuf);
 USHORT CTOS_44x2ChangePSC(UCHAR* baBuf);
-USHORT CTOS_44x2VerifyPSC(UCHAR* baBuf);	
+USHORT CTOS_44x2VerifyPSC(UCHAR* baBuf);
 
-USHORT CTOS_44x8WriteMemoryWithoutPBit(USHORT usAddr,UCHAR* baBuf,USHORT usLen);	
+USHORT CTOS_44x8WriteMemoryWithoutPBit(USHORT usAddr,UCHAR* baBuf,USHORT usLen);
 USHORT CTOS_44x8WriteMemoryWithPBit(USHORT usAddr,UCHAR* baBuf,USHORT usLen);
 USHORT CTOS_44x8WritePBitWithDataCompare(USHORT usAddr,UCHAR* baBuf,USHORT usLen);
 USHORT CTOS_44x8ReadMemoryWithoutPBit(USHORT usAddr,UCHAR* baBuf,USHORT* usLen);
@@ -1157,9 +1419,9 @@ USHORT CTOS_44x6Reload(BOOL fCounterBak,BYTE bBitNum);
 USHORT CTOS_44x6VerifyTSC(UCHAR* baBuf);
 USHORT CTOS_44x6Auth(BOOL fExtAuth,BYTE bKey,BYTE bNumClk,BYTE* baChallenge,BYTE* baRepBits);
 
-USHORT CTOS_I2CCReset(UCHAR* baBuf,BYTE* bLen);	
+USHORT CTOS_I2CCReset(UCHAR* baBuf,BYTE* bLen);
 USHORT CTOS_I2CReadMemory(BYTE bCmd,BYTE bNumAddr,USHORT usAddr,BOOL fDummyRead,UCHAR* baBuf,USHORT* usLen);
-USHORT CTOS_I2CWriteMemory(BYTE bCmd,BYTE bNumAddr,USHORT usAddr,UCHAR* baBuf,USHORT usLen);	
+USHORT CTOS_I2CWriteMemory(BYTE bCmd,BYTE bNumAddr,USHORT usAddr,UCHAR* baBuf,USHORT usLen);
 
 USHORT CTOS_SLE44x4ReadMemory(BYTE bAddr,UCHAR* baBuf,BYTE* bLen);
 USHORT CTOS_SLE44x4VerifyUserCode(UCHAR* baBuf);
@@ -1175,7 +1437,7 @@ USHORT CTOS_GPM896VerifySecurityCode(UCHAR* baKey);
 USHORT CTOS_GPM896WriteMemory(BYTE bAddr,UCHAR* baBuf,BYTE bLen);
 USHORT CTOS_GPM896EraseMemory(BYTE bAddr, BYTE bLen);
 USHORT CTOS_GPM896EraseArea1(UCHAR* baKey);
-USHORT CTOS_GPM896EraseArea2(UCHAR* baKey);  
+USHORT CTOS_GPM896EraseArea2(UCHAR* baKey);
 
 USHORT CTOS_SLE44x4ReadMemory(BYTE bAddr,UCHAR* baBuf,BYTE* bLen);
 USHORT CTOS_SLE44x4VerifyUserCode(UCHAR* baBuf);
@@ -1191,7 +1453,7 @@ USHORT CTOS_GPM896VerifySecurityCode(UCHAR* baKey);
 USHORT CTOS_GPM896WriteMemory(BYTE bAddr,UCHAR* baBuf,BYTE bLen);
 USHORT CTOS_GPM896EraseMemory(BYTE bAddr, BYTE bLen);
 USHORT CTOS_GPM896EraseArea1(UCHAR* baKey);
-USHORT CTOS_GPM896EraseArea2(UCHAR* baKey);  
+USHORT CTOS_GPM896EraseArea2(UCHAR* baKey);
 
 //=============================================================================================================================
 //
@@ -1244,7 +1506,7 @@ BINDING(CTOS_PwrMngSetParameter)
                                  luaL_checknumber(L, 3)));
     return 0;
 }
- 
+
 ///USHORT CTOS_PwrMngRegisterCallBack(void *PwrCallBack);
 ///USHORT CTOS_PwrMngUnRegisterCallBack(void);
 
@@ -1329,14 +1591,14 @@ BINDING(CTOS_BatteryGetCapacityByADC)
 //Should be padding to 128 bytes
 typedef struct
 {
-	BYTE bFlag;
-	BYTE bCAPType;
-	BYTE baGeneratedDateTime[13];
-	BYTE baName[21];
-	BYTE baVersion[2];
-	BYTE baCompany[21];
-	BYTE baExeName[25];
-	BYTE RFU[44];
+        BYTE bFlag;
+        BYTE bCAPType;
+        BYTE baGeneratedDateTime[13];
+        BYTE baName[21];
+        BYTE baVersion[2];
+        BYTE baCompany[21];
+        BYTE baExeName[25];
+        BYTE RFU[44];
 } CTOS_stCAPInfo;
 */
 
@@ -1376,16 +1638,6 @@ BINDING(CTOS_GetFactorySN)
     return 1;
 }
 
-//USHORT CTOS_SetFactorySN(BYTE *baFactorySN);
-BINDING(CTOS_SetFactorySN)
-{
-    char serial[16];
-    bzero(serial, sizeof(serial));
-    strncpy(serial, luaL_checkstring(L, 1), sizeof(serial) - 1);
-    CTOS_CALL(SetFactorySN(serial));
-    return 0;
-}
-
 /*
 USHORT CTOS_SetUSBMode(BYTE baUSBMode);
 void CTOS_UpdateFromMMCI(BYTE *baMMCI, BYTE bShowUI);
@@ -1400,7 +1652,11 @@ BINDING(CTOS_SystemWait)
     DWORD waitEvents = luaL_checknumber(L, 2);
     DWORD triggeredEvents = 0;
 
-    CTOS_CALL(SystemWait(timeout, waitEvents, &triggeredEvents));
+    // TODO it returns d_SYSWAIT_MODEM_ERROR?!
+    //CTOS_CALL_2(SystemWait(timeout, waitEvents, &triggeredEvents),
+    //            d_SYSWAIT_TIMEOUT);
+
+    CTOS_SystemWait(timeout, waitEvents, &triggeredEvents);
 
     lua_pushnumber(L, triggeredEvents);
     return 1;
@@ -1435,6 +1691,7 @@ static const luaL_Reg ctosapi_functions[] = {
 #define BINDING(name) {#name, lua__##name},
     BINDING(CTOS_GetSerialNumber)
 
+    BINDING(CTOS_Delay)
     BINDING(CTOS_TickGet)
 
     BINDING(CTOS_RS232Open)
@@ -1453,7 +1710,18 @@ static const luaL_Reg ctosapi_functions[] = {
     BINDING(CTOS_TCP_GPRSClose)
     BINDING(CTOS_TCP_GPRSClose_A)
     BINDING(CTOS_TCP_GPRSGetIP)
+    BINDING(CTOS_TCP_GPRSConnectEx)
+    BINDING(CTOS_TCP_GPRSDisconnect)
+    BINDING(CTOS_TCP_GPRSTx)
+    BINDING(CTOS_TCP_GPRSRx)
     BINDING(CTOS_TCP_GPRSStatus)
+
+    BINDING(CTOS_GSMSelectSIM)
+    BINDING(CTOS_GSMGetCurrentSIM)
+    BINDING(CTOS_SIMGetIMSI)
+    BINDING(CTOS_SIMCheckReady)
+
+    BINDING(CTOS_LanguageConfig)
 
     BINDING(CTOS_LCDSelectMode)
     BINDING(CTOS_LCDSetContrast)
@@ -1461,6 +1729,8 @@ static const luaL_Reg ctosapi_functions[] = {
     BINDING(CTOS_LCDGClearCanvas)
     BINDING(CTOS_LCDGPixel)
     BINDING(CTOS_LCDGTextOut)
+    BINDING(CTOS_LCDGSetBox)
+    BINDING(CTOS_LCDGClearWindow)
 
     BINDING(CTOS_LCDTClearDisplay)
 
@@ -1499,7 +1769,6 @@ static const luaL_Reg ctosapi_functions[] = {
     BINDING(CTOS_BatteryGetCapacityByADC)
 
     BINDING(CTOS_GetFactorySN)
-    BINDING(CTOS_SetFactorySN)
 
     BINDING(CTOS_SystemWait)
 

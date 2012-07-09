@@ -20,6 +20,15 @@ platform.getMonotonicTime =
 jos.SetTimer(platform._monotonicTimerId, 6553)
 
 platform.sleep = jos.DelayMs
+platform.waitForEvents =
+   function()
+     -- ? platform.getMonotonicTime()
+     if isToplevelThread() then
+        platform.sleep(0.1)
+     else
+        yield()
+     end
+   end
 
 --
 -- display

@@ -8,6 +8,24 @@ function printTable(table)
    end
 end
 
+function tableToString(table)
+   local result = ""
+   for index, value in ipairs(table) do
+      result = result..index..": "..value.."\n"
+   end
+   return result
+end
+
+function table.find(table, valueToFind)
+   for index, value in ipairs(table) do
+      if value == valueToFind then
+         return index, value
+      end
+   end
+
+   return nil
+end
+
 function stringToLines(str, maxColumns, indent, indent1)
   local indent = indent or ""
   local indent1 = indent1 or indent
@@ -64,22 +82,24 @@ function displayMultilineText(text, keyMap, atColumn, atRow, windowColumns, wind
 
    local currentLineOffset = 0
    while true do
-      platform.display.clear((atColumn - 1) * fontWidth,
-                             (atRow - 1) * fontHeight,
-                             windowColumns * fontWidth,
-                             windowRows * fontHeight)
-      local currentLineIndex = currentLineOffset
-      local currentScreenRow = atRow
-      while currentScreenRow - atRow < windowRows do
-         if currentLineIndex < #lines then
-            local line = lines[currentLineIndex + 1]
-            platform.display.printXY(atColumn, currentScreenRow, line)
-            --platform.display.print(string.rep(' ', windowColumns - #line))
-         else
-            --platform.display.printXY(atColumn, currentScreenRow, string.rep(' ', windowColumns))
+      if needsRedraw then
+         platform.display.clear((atColumn - 1) * fontWidth,
+                                (atRow - 1) * fontHeight,
+                                windowColumns * fontWidth,
+                                windowRows * fontHeight)
+         local currentLineIndex = currentLineOffset
+         local currentScreenRow = atRow
+         while currentScreenRow - atRow < windowRows do
+            if currentLineIndex < #lines then
+               local line = lines[currentLineIndex + 1]
+               platform.display.printXY(atColumn, currentScreenRow, line)
+               --platform.display.print(string.rep(' ', windowColumns - #line))
+            else
+               --platform.display.printXY(atColumn, currentScreenRow, string.rep(' ', windowColumns))
+            end
+            currentScreenRow = currentScreenRow + 1
+            currentLineIndex = currentLineIndex + 1
          end
-         currentScreenRow = currentScreenRow + 1
-         currentLineIndex = currentLineIndex + 1
       end
       needsRedraw = true
       if platform.keyboard.hasKeyInBuffer() then
@@ -99,9 +119,11 @@ function displayMultilineText(text, keyMap, atColumn, atRow, windowColumns, wind
          else
             needsRedraw = false
          end
+      else
+         needsRedraw = false
       end
 
-      waitForEvents()
+      platform.waitForEvents()
    end
 end
 
