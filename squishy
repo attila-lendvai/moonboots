@@ -8,7 +8,7 @@ local model = GetOption("model")
 Main "lua/aliases.lua"
 Main "lua/utils.lua"
 Main "lua/localization.lua"
-Main "lua/lua-bst-client.lua"
+Main "lua/bst-client.lua"
 
 if model == "pc1000" then
    Main "lua/pc1000.lua"
