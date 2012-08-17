@@ -12,11 +12,11 @@
 
 (defvar bst/server-socket nil)
 
-(defvar bst/server-error-log "*bst-server-error*"
-  "The buffer where error log messages are sent.")
+(defvar bst/server-message-buffer-name "*bst-server-log*"
+  "The buffer where log messages are inserted.")
 
-(defun bst/error-log (msg &rest args)
-  (with-current-buffer (get-buffer-create bst/server-error-log)
+(defun bst/log (msg &rest args)
+  (with-current-buffer (get-buffer-create bst/server-message-buffer-name)
     (goto-char (point-max))
     (insert (format "%s: %s\n"
 		    (format-time-string "%Y-%m-%d %H:%M:%S")
@@ -39,7 +39,7 @@
                                 :sentinel 'bst/listen-sentinel
                                 :filter 'bst/listen-filter))
     (setq bst/clients '())
-    (with-current-buffer (get-buffer-create bst/server-error-log)
+    (with-current-buffer (get-buffer-create bst/server-message-buffer-name)
       (delete-region (point-min) (point-max)))))
 
 (defun bst/stop ()
@@ -75,36 +75,45 @@
          (goto-char message-start-point)
          (when (re-search-forward "\n\n" nil 't)
            (let ((message (buffer-substring message-start-point (point))))
-             (bst/error-log "got message: '%s' %s" message process)
+             (bst/log "got message: '%s' %s" message process)
              (setf (getf (cdr client-entry) :last-message-start) (point))
-             (process-message process message))))))))
+             (bst/process-message process message)
+             (bst/log "finished processing message: %s" process))))))))
 
-(defun process-message (process message)
+(defun bst/process-message (process message)
   (let ((lines (split-string message "\n" t)))
     (cond
       ((string= (first lines) "hello bst!")
-       (process-send-string process "done\n\n")))))
+       (bst/log "got hello, sending 'done': %s" process)
+       (process-send-string process "done\n\n"))
+      (t
+       (error "Unexpected message: '%s' from %s" message process)))))
+
+(defun bst/send-message (message)
+  (interactive)
+  (process-send-string (get-buffer-process (current-buffer)) message))
 
 (defun bst/listen-sentinel (process status)
   (cond
     ;; Server status
     ((and (eq bst/server-socket process)
           (equal status "deleted\n"))
-     (kill-buffer (process-buffer process))
-     (bst/error-log "server stopped"))
+     (kill-buffer (get-buffer bst/server-message-buffer-name))
+     (bst/log "server stopped"))
 
     ;; Client socket status
     ((equal status "connection broken by remote peer\n")
      (when (process-buffer process)
        (kill-buffer (process-buffer process))
-       (bst/error-log "connection dropped")))
+       (setf bst/clients (remove* process bst/clients :key 'car))
+       (bst/log "connection broken by remote peer")))
 
     ((equal status "open\n") ;; this says "open from ..."
-     (bst/error-log "Elnode opened new connection"))
+     (bst/log "Elnode opened new connection"))
 
     ;; Default
     (t
-     (bst/error-log "status: %s %s" process status))))
+     (bst/log "status: %s %s" process status))))
 
 ;(bst/start)
 ;(sleep-for 300)
