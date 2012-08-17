@@ -122,10 +122,13 @@ platform.serial.send =
 -- gprs
 --
 platform.gprs = {}
-platform.gprs.connectionTimeout = 80
+platform.gprs.gprsConnectionTimeout = 80
+platform.gprs.connectTimeout = 10
+platform.gprs.transferTimeout = 10
 platform.gprs.currentSimSlot = nil
 platform.gprs.selectSimTimeout = 3
 
+-- GPRS, not just a socket...
 platform.gprs.isConnected =
    function ()
       local state = ctos.TCP_GPRSStatus()
@@ -160,7 +163,7 @@ platform.gprs.selectSimSlot =
      end
    end
 
-platform.gprs.initiateConnect =
+platform.gprs.initiateGPRSConnection =
    function ()
      if not platform.gprs.currentSimSlot then
         platform.gprs.selectSimSlot(1)
@@ -170,19 +173,19 @@ platform.gprs.initiateConnect =
      yield()
    end
 
-platform.gprs.initiateDisconnect =
+platform.gprs.initiateGPRSDisconnection =
    function ()
      ctos.TCP_GPRSClose_A()
    end
 
 platform.gprs.waitUntilConnected =
    function (timeout)
-     local timeout = timeout or platform.gprs.connectionTimeout
+     local timeout = timeout or platform.gprs.gprsConnectionTimeout
      local startTime = platform.getMonotonicTime()
      while true do
         local status, returnValue = ctos.TCP_GPRSStatus()
         local elapsedTime = platform.getMonotonicTime() - startTime
-        platform.display.printXY(1, 4, "GPRS elapsed: %s", elapsedTime) -- TODO delme
+        platform.display.printXY(1, 8, "GPRS elapsed: %s", elapsedTime) -- TODO delme
         if bit32.band(status, ctos.TCP_GPRS_STATE_ESTABLISHED) ~= 0 then
            return elapsedTime
         elseif elapsedTime > timeout then
@@ -190,22 +193,52 @@ platform.gprs.waitUntilConnected =
         elseif returnValue == ctos.TCP_IO_PROCESSING or bit32.band(status, ctos.TCP_GPRS_STATE_ESTABLISHING) ~= 0 then
            yield(status, elapsedTime)
         else
-           error(string.format("platform.gprs.waitUntilConnected: unknown error: %d", status), 0)
+           error(string.format("platform.gprs.waitUntilConnected: unknown error: %d, status: %d", returnValue, status), 0)
         end
      end
    end
 
-platform.gprs.ensureConnected =
+platform.gprs.ensureGPRSConnected =
    function (timeout)
      local state = platform.gprs.isConnected()
-     local timeout = timeout or platform.gprs.connectionTimeout
+     local timeout = timeout or platform.gprs.gprsConnectionTimeout
      if not state then
-        platform.gprs.initiateConnect()
+        platform.gprs.initiateGPRSConnection()
         platform.gprs.waitUntilConnected(timeout)
-     elseif bit32.band(status, ctos.TCP_GPRS_STATE_ESTABLISHING) ~= 0 then
+     elseif bit32.band(state, ctos.TCP_GPRS_STATE_ESTABLISHING) ~= 0 then
         platform.gprs.waitUntilConnected(timeout)
      end
    end
+
+platform.gprs.connect =
+   function (ipAddress, port, timeout)
+     local socket = ctos.TCP_GPRSConnectEx(ipAddress, port, timeout or platform.gprs.connectTimeout)
+     return socket
+   end
+
+platform.gprs.disconnect =
+   function (socket)
+      ctos.TCP_GPRSDisconnect(socket)
+   end
+
+platform.gprs.isSocketConnected =
+   function (socket)
+      -- TODO FIXME but how?
+      return true
+   end
+
+platform.gprs.send =
+   function (socket, data, timeout)
+      ctos.TCP_GPRSTx(socket, data, timeout or platform.gprs.transferTimeout)
+   end
+
+platform.gprs.receive =
+   function (socket, length, timeout)
+      local result, didTimedOut = ctos.TCP_GPRSRx(socket, length, timeout or platform.gprs.transferTimeout)
+      return result, didTimedOut
+   end
+
+
 
 --
 -- initialize the libs as the API mandates

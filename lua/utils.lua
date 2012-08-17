@@ -1,5 +1,13 @@
 -- -*- mode: lua; coding: utf-8 -*-
 
+function errorWithFormat(object, ...)
+   if type(object) == "string" and select('#', ...) > 0 then
+      error(string.format(object, ...), 2)
+   else
+      error(object, 2)
+   end
+end
+
 function printTable(table)
    for index, value in ipairs(table) do
       io.write(index)

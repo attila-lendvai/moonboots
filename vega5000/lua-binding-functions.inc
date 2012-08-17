@@ -579,7 +579,7 @@ BINDING(CTOS_TCP_GPRSConnectEx)
     const char *ipAsString = luaL_checkstring(L, 1);
     USHORT port = luaL_checknumber(L, 2);
     BYTE ip[4] = {0, 0, 0, 0};
-    int timeout = luaL_checknumber(L, 3);
+    lua_Number timeout = luaL_checknumber(L, 3);
     float startTime = ((float)CTOS_TickGet()) / 100;
 
     int a1, a2, a3, a4;
@@ -598,7 +598,7 @@ BINDING(CTOS_TCP_GPRSConnectEx)
     {
         if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
         {
-            return luaL_error(L, "CTOS_TCP_GPRSConnectEx timed out");
+            return luaL_error(L, "CTOS_TCP_GPRSConnectEx timed out (%d secs)", timeout);
         }
 
         DWORD state = 0;
@@ -625,7 +625,7 @@ BINDING(CTOS_TCP_GPRSConnectEx)
 BINDING(CTOS_TCP_GPRSDisconnect)
 {
     BYTE socket = luaL_checknumber(L, 1);
-    int timeout = luaL_checknumber(L, 2);
+    lua_Number timeout = luaL_optnumber(L, 2, 10); // FIXME arbitrary default
     float startTime = ((float)CTOS_TickGet()) / 100;
 
     CTOS_CALL_2(TCP_GPRSDisconnect(socket),
@@ -633,9 +633,10 @@ BINDING(CTOS_TCP_GPRSDisconnect)
 
     while (1)
     {
-        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        if (timeout != 0 &&
+            (((float)CTOS_TickGet()) / 100 - startTime) > timeout)
         {
-            return luaL_error(L, "CTOS_TCP_GPRSDisconnect timed out");
+            return luaL_error(L, "CTOS_TCP_GPRSDisconnect timed out (timeout was %d secs)", timeout);
         }
 
         DWORD state = 0;
@@ -663,14 +664,14 @@ BINDING(CTOS_TCP_GPRSTx)
     size_t dataLength = 0;
     size_t maxChunkLength = 1460;
     const BYTE *data = luaL_checklstring(L, 2, &dataLength);
-    int timeout = luaL_checknumber(L, 3);
+    lua_Number timeout = luaL_checknumber(L, 3);
     float startTime = ((float)CTOS_TickGet()) / 100;
 
     while (dataLength > 0)
     {
         if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
         {
-            return luaL_error(L, "CTOS_TCP_GPRSTx timed out");
+            return luaL_error(L, "CTOS_TCP_GPRSTx timed out (timeout was %d secs)", timeout);
         }
 
         size_t chunkLength = maxChunkLength;
@@ -694,7 +695,7 @@ BINDING(CTOS_TCP_GPRSTx)
     {
         if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
         {
-            return luaL_error(L, "CTOS_TCP_GPRSTx timed out");
+            return luaL_error(L, "CTOS_TCP_GPRSTx timed out (timeout was %d secs)", timeout);
         }
 
         DWORD state = 0;
@@ -719,8 +720,8 @@ BINDING(CTOS_TCP_GPRSTx)
 BINDING(CTOS_TCP_GPRSRx)
 {
     BYTE socket = luaL_checknumber(L, 1);
-    USHORT expectedLength = luaL_checknumber(L, 2);
-    int timeout = luaL_checknumber(L, 3);
+    USHORT expectedLength = luaL_optnumber(L, 2, 256);
+    lua_Number timeout = luaL_checknumber(L, 3);
 
     USHORT actualLength = expectedLength;
     BYTE *buffer = malloc(expectedLength);
@@ -735,16 +736,13 @@ BINDING(CTOS_TCP_GPRSRx)
         }
     }
 
+    int loopCount = 0;
     while (1)
     {
-        if ((((float)CTOS_TickGet()) / 100 - startTime) > timeout)
-        {
-            free(buffer);
-            return luaL_error(L, "CTOS_TCP_GPRSRx timed out");
-        }
-
         DWORD state = 0;
         USHORT result = CTOS_TCP_GPRSStatus(&state);
+
+        ++loopCount;
 
         if (result == d_TCP_IO_PROCESSING ||
             state & TCP_GPRS_STATE_RECEIVING)
@@ -756,11 +754,24 @@ BINDING(CTOS_TCP_GPRSRx)
         {
             break;
         }
+
+        if (loopCount > 1 && // otherwise we may keep on timing out with too small timeouts...
+            timeout > 0 &&
+            (((float)CTOS_TickGet()) / 100 - startTime) > timeout)
+        {
+            lua_pushlstring(L, buffer, 0);
+            lua_pushboolean(L, 1);
+            // ignore error reports... we may call it when the task is not running (?)
+            CTOS_TCP_GPRSCancelTask(buffer);
+            free(buffer);
+            return 2;
+        }
     }
 
     lua_pushlstring(L, buffer, actualLength);
+    lua_pushboolean(L, 0);
     free(buffer);
-    return 1;
+    return 2;
 }
 
 //USHORT CTOS_TCP_GPRSStatus (DWORD* pdwState);
@@ -913,9 +924,17 @@ typedef struct
     BYTE baMessage[300];
     USHORT usMessageLen;
 } stSMS_Submit;
+*/
 
 //System Commands
-void CTOS_GSMReset(void);
+//void CTOS_GSMReset(void);
+BINDING(CTOS_GSMReset)
+{
+    CTOS_GSMReset();
+    return 0;
+}
+
+/*
 USHORT CTOS_GSMOpen(ULONG ulBaud, BYTE bInit);
 USHORT CTOS_GSMClose(void);
 USHORT CTOS_GSMPowerOff(void);
@@ -1716,6 +1735,7 @@ static const luaL_Reg ctosapi_functions[] = {
     BINDING(CTOS_TCP_GPRSRx)
     BINDING(CTOS_TCP_GPRSStatus)
 
+    BINDING(CTOS_GSMReset)
     BINDING(CTOS_GSMSelectSIM)
     BINDING(CTOS_GSMGetCurrentSIM)
     BINDING(CTOS_SIMGetIMSI)

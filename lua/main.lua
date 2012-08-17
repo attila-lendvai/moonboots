@@ -90,7 +90,13 @@ function printGPRSStatusAt(x, y)
    --local status = wls.CheckNetLink()
    --platform.display.printXY(x, y, "%s %d.", status, platform.getMonotonicTime())
    local status = ctos.TCP_GPRSStatus()
-   platform.display.printXY(x, y, "%s %d.", status, platform.getMonotonicTime())
+   local bstStatus
+   if bst.isConnected() then
+      bstStatus = "C"
+   else
+      bstStatus = "D"
+   end
+   platform.display.printXY(x, y, "%s %d %s.", status, platform.getMonotonicTime(), bstStatus)
 end
 
 --[[
@@ -135,10 +141,10 @@ mainThread =
                 if not isThreadAlive(gprsConnectThread) then
                    gprsConnectThread = newThread(
                       function ()
-                         platform.display.printXY(1, 3, "GPRS connecting...")
-                         platform.gprs.initiateConnect()
+                         platform.display.printXY(1, 8, "GPRS connecting...")
+                         platform.gprs.initiateGPRSConnection()
                          local elapsedTime = platform.gprs.waitUntilConnected()
-                         platform.display.printXY(1, 3, "GPRS up in %d.", elapsedTime)
+                         platform.display.printXY(1, 8, "GPRS up in %d.", elapsedTime)
                          gprsConnectThread = nil
                          return "done"
                       end)
@@ -149,9 +155,37 @@ mainThread =
              title = "Disconnect";
              keyCode = platform.keyboard.key2;
              trunk = function ()
-                platform.gprs.initiateDisconnect()
+                platform.gprs.initiateGPRSDisconnection()
              end;
           },
+          {
+             title = "bst connect";
+             keyCode = platform.keyboard.key3;
+             trunk = function ()
+                newThread(
+                   function ()
+                      bst.ensureConnected()
+                   end)
+             end;
+          },
+          {
+             title = "bst disconnect";
+             keyCode = platform.keyboard.key4;
+             trunk = function ()
+                newThread(
+                   function ()
+                      bst.disconnect()
+                   end)
+             end;
+          },
+          {
+             title = "GSM reset";
+             keyCode = platform.keyboard.key5;
+             trunk = function ()
+                ctos.GSMReset()
+             end;
+          }
+          --[[
           {
              title = "http get";
              keyCode = platform.keyboard.key3;
@@ -189,32 +223,6 @@ mainThread =
                                     end)
              end;
           },
-          {
-             title = "bst connect";
-             keyCode = platform.keyboard.key5;
-             trunk = function ()
-                newThread(
-                   function ()
-                      bst.ensureConnected()
-                      if bst.isConnected then
-                         displayMultilineText("bst connected!!! :)")
-                      else
-                         displayMultilineText("bst not connected... :(")
-                      end
-                   end)
-             end;
-          },
-          {
-             title = "bst disconnect";
-             keyCode = platform.keyboard.key6;
-             trunk = function ()
-                newThread(
-                   function ()
-                      bst.disconnect()
-                   end)
-             end;
-          }
-          --[[
           {
              title = "error from here";
              keyCode = platform.keyboard.key5;

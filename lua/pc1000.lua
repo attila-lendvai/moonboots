@@ -152,6 +152,12 @@ platform.gprs.isConnected =
       end
    end
 
+platform.gprs.isSocketConnected =
+   function (socket)
+      local state = wls.CheckMTcpLink(socket)
+      return state == wls.OK
+   end
+
 platform.gprs.selectSimSlot =
    function (simSlot)
      if simSlot < 1 or simSlot > 2 then
@@ -164,7 +170,7 @@ platform.gprs.selectSimSlot =
      platform.gprs.currentSimSlot = simSlot
    end
 
-platform.gprs.initiateConnect =
+platform.gprs.initiateGPRSConnection =
    function ()
      if not platform.gprs.currentSimSlot then
         platform.gprs.selectSimSlot(1)
@@ -183,7 +189,7 @@ platform.gprs.initiateConnect =
    end
 
 -- TODO "After Wls_NetClose() returns WLS_OK, it is possible the netlink does not close really, you should invoke Wls_CheckNetLink to check the netlink."
-platform.gprs.initiateDisconnect =
+platform.gprs.initiateGPRSDisconnection =
    function ()
      wls.NetClose()
      wls.Reset(wls.GPRS_G610)
@@ -209,12 +215,12 @@ platform.gprs.waitUntilConnected =
      end
    end
 
-platform.gprs.ensureConnected =
+platform.gprs.ensureGPRSConnected =
    function (timeout)
      local state = platform.gprs.isConnected()
      local timeout = timeout or platform.gprs.connectionTimeout
      if not state then
-        platform.gprs.initiateConnect()
+        platform.gprs.initiateGPRSConnection()
         platform.gprs.waitUntilConnected(timeout)
      elseif state == wls.LINKOPENING then
         platform.gprs.waitUntilConnected(timeout)
