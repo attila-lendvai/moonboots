@@ -8,7 +8,7 @@ function errorWithFormat(object, ...)
    end
 end
 
-function printTable(table)
+function printIndexedTable(table)
    for index, value in ipairs(table) do
       io.write(index)
       io.write(": ")
@@ -16,10 +16,26 @@ function printTable(table)
    end
 end
 
-function tableToString(table)
+function indexedTableToString(table)
    local result = ""
    for index, value in ipairs(table) do
-      result = result..index..": "..value.."\n"
+      result = result .. index .. ": " .. value .. "\n"
+   end
+   return result
+end
+
+function printTable(table)
+   for key, value in pairs(table) do
+      io.write(key)
+      io.write(": ")
+      print(value)
+   end
+end
+
+function tableToString(table)
+   local result = ""
+   for key, value in pairs(table) do
+      result = result .. key .. ": " .. value .. "\n"
    end
    return result
 end
