@@ -720,8 +720,15 @@ BINDING(CTOS_TCP_GPRSTx)
 BINDING(CTOS_TCP_GPRSRx)
 {
     BYTE socket = luaL_checknumber(L, 1);
-    USHORT expectedLength = luaL_optnumber(L, 2, 256);
+    // the maximum allowed by the API is 1460
+    USHORT expectedLength = luaL_optnumber(L, 2, 1460);
     lua_Number timeout = luaL_checknumber(L, 3);
+    BOOL errorOnTimeout = lua_checkBoolean(L, 4);
+
+    if (expectedLength > 1460)
+    {
+        return luaL_error(L, "error from CTOS call 'CTOS_TCP_GPRSRx': maximum supported buffer size is 1460 bytes, but tried to read %d bytes", (lua_Number)expectedLength);
+    }
 
     USHORT actualLength = expectedLength;
     BYTE *buffer = malloc(expectedLength);
@@ -759,12 +766,20 @@ BINDING(CTOS_TCP_GPRSRx)
             timeout > 0 &&
             (((float)CTOS_TickGet()) / 100 - startTime) > timeout)
         {
-            lua_pushlstring(L, buffer, 0);
-            lua_pushboolean(L, 1);
-            // ignore error reports... we may call it when the task is not running (?)
-            CTOS_TCP_GPRSCancelTask(buffer);
-            free(buffer);
-            return 2;
+            if (errorOnTimeout)
+            {
+                free(buffer);
+                return luaL_error(L, "CTOS_TCP_GPRSRx timed out (%d secs)", timeout);
+            }
+            else
+            {
+                lua_pushlstring(L, buffer, 0);
+                lua_pushboolean(L, 1);
+                // ignore error reports... we may call it when the task is not running (?)
+                CTOS_TCP_GPRSCancelTask(buffer);
+                free(buffer);
+                return 2;
+            }
         }
     }
 

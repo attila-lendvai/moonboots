@@ -233,8 +233,12 @@ platform.gprs.send =
    end
 
 platform.gprs.receive =
-   function (socket, length, timeout)
-      local result, didTimedOut = ctos.TCP_GPRSRx(socket, length, timeout or platform.gprs.transferTimeout)
+   function (socket, length, timeout, errorOnTimeout)
+      if errorOnTimeout == nil then
+         errorOnTimeout = true
+      end
+      -- TODO support length > 1460 with a lua side loop
+      local result, didTimedOut = ctos.TCP_GPRSRx(socket, length, timeout or platform.gprs.transferTimeout, errorOnTimeout)
       return result, didTimedOut
    end
 
