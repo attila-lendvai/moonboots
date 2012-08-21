@@ -1,10 +1,15 @@
 ;;; -*- mode: emacs-lisp; coding: utf-8 -*-
 
+(require 'json)
+
 (defvar bst/port 9999
   "port of the server")
 
 (defvar bst/host nil
   "host of the server")
+
+(defvar bst/eom-marker "\n\n\n"
+  "End Of Message marker")
 
 (defvar bst/process-name "bst listener")
 
@@ -73,25 +78,29 @@
          (goto-char (point-max))
          (insert data)
          (goto-char message-start-point)
-         (when (re-search-forward "\n\n" nil 't)
-           (let ((message (buffer-substring message-start-point (point))))
+         (when (re-search-forward bst/eom-marker nil 't)
+           (let* ((message-string (buffer-substring message-start-point (point)))
+                  (json-object-type 'plist)
+                  (message (json-read-from-string message-string)))
              (bst/log "got message: '%s' %s" message process)
              (setf (getf (cdr client-entry) :last-message-start) (point))
              (bst/process-message process message)
              (bst/log "finished processing message: %s" process))))))))
 
-(defun bst/process-message (process message)
-  (let ((lines (split-string message "\n" t)))
-    (cond
-      ((string= (first lines) "hello bst!")
-       (bst/log "got hello, sending 'done': %s" process)
-       (process-send-string process "done\n\n"))
-      (t
-       (error "Unexpected message: '%s' from %s" message process)))))
+(defun bst/process-message (process message-string)
+  (cond
+    ((string= (getf message :request) "hello bst!")
+     (bst/log "got hello, sending result: %s" process)
+     (bst/send-message '(:result t)))
+    (t
+     (error "Unexpected message: '%s' from %s" message process))))
 
-(defun bst/send-message (message)
+(defun bst/send-message (object)
   (interactive)
-  (process-send-string (get-buffer-process (current-buffer)) message))
+  (let ((message (json-encode object))
+        (process (get-buffer-process (current-buffer))))
+    (bst/log "sending message: '%s' to %s" message process)
+    (process-send-string process (concatenate 'string message bst/eom-marker))))
 
 (defun bst/listen-sentinel (process status)
   (cond

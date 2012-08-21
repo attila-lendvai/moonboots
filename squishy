@@ -5,6 +5,8 @@ Output "build/squished.lua"
 
 local model = GetOption("model")
 
+Module "dkjson" "lua/dkjson.lua"
+
 Main "lua/aliases.lua"
 Main "lua/utils.lua"
 Main "lua/localization.lua"
