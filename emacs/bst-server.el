@@ -88,12 +88,15 @@
              (bst/log "finished processing message: %s" process))))))))
 
 (defun bst/process-message (process message-string)
-  (cond
-    ((string= (getf message :request) "hello bst!")
-     (bst/log "got hello, sending result: %s" process)
-     (bst/send-message '(:result t)))
-    (t
-     (error "Unexpected message: '%s' from %s" message process))))
+  (let ((type (getf message :type)))
+    (cond
+      ((string= type "bst connect request")
+       (bst/log "got hello, sending result: %s" process)
+       (bst/send-message '(:type "bst connect response")))
+      ((string= type "eval response")
+       (bst/log "got eval response: %s" process))
+      (t
+       (error "Unexpected message: '%s' from %s" message process)))))
 
 (defun bst/send-message (object)
   (interactive)
@@ -101,6 +104,14 @@
         (process (get-buffer-process (current-buffer))))
     (bst/log "sending message: '%s' to %s" message process)
     (process-send-string process (concatenate 'string message bst/eom-marker))))
+
+(defun bst/eval (form)
+  (interactive)
+  (bst/send-message `(:type "eval request" :form ,form)))
+
+(defun bst/disconnect (form)
+  (interactive)
+  (bst/send-message '(:type "disconnect")))
 
 (defun bst/listen-sentinel (process status)
   (cond
