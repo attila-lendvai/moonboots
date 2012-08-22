@@ -151,6 +151,14 @@ function displayMultilineText(text, keyMap, atColumn, atRow, windowColumns, wind
    end
 end
 
+function displayMessage(message)
+   -- TODO this is somewhat kludgey
+   newFullscreenThread(function ()
+                          platform.display.clear()
+                          displayMultilineText(message)
+                       end)
+end
+
 function displayMenu(entries)
    local keyMap = {}
    local text = nil
