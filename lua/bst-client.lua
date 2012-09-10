@@ -90,19 +90,19 @@ bst.messageLoop = function()
       if message.type == "eval request" then
          local form = message.form
          local response = { type = "eval response" }
-         local isLoaded, fn = pcall(loadstring, form)
+         local isLoaded, fn = pcall(load, form)
          if isLoaded then
             local isRun, returnValue = pcall(fn)
             if isRun then
-               response.result = true
-               response.returnValue = returnValue
+               response["result"] = true
+               response["return-value"] = returnValue
             else
-               response.result = false
-               response.error = returnValue
+               response["result"] = false
+               response["error"] = returnValue
             end
          else
-            response.result = false
-            response.error = fn
+            response["result"] = false
+            response["error"] = fn
          end
          bst.sendMessage(bst.socket, response)
       elseif message.type == "disconnect" then
@@ -110,10 +110,14 @@ bst.messageLoop = function()
       else
          displayMessage("Unknown BST msg:\n" .. tableToString(message))
       end
+      yield()
    end
 end
 
 bst.receiveSomeMessages = function ()
+   if not bst.socket then
+      errorWithFormat("BST connection lost")
+   end
    local chunk = platform.gprs.receive(bst.socket, nil, 0.1, false)
    bst.networkBuffer = bst.networkBuffer .. chunk
    while true do
