@@ -716,6 +716,8 @@ BINDING(CTOS_TCP_GPRSTx)
     return 0;
 }
 
+// TODO FIXME rewrite in lua. what's needed is a way to call malloc/free or better lua_Alloc from lua code.
+// maybe use lua_newuserdata and add a metamethod for tostring?
 //USHORT CTOS_TCP_GPRSRx(BYTE bSocket, BYTE *baBuffer, USHORT *usLen);
 BINDING(CTOS_TCP_GPRSRx)
 {
