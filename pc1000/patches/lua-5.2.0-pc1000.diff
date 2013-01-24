@@ -1,0 +1,79 @@
+diff -rN -u old-lua-5.2.0/Makefile new-lua-5.2.0/Makefile
+--- old-lua-5.2.0/Makefile	2013-01-24 16:45:34.937500000 +0700
++++ new-lua-5.2.0/Makefile	2013-01-24 16:45:35.281250000 +0700
+@@ -4,7 +4,7 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= none
++PLAT= pc1000
+ 
+ # Where to install. The installation starts in the src and doc directories,
+ # so take care if INSTALL_TOP is not an absolute path. See the local target.
+@@ -36,7 +36,7 @@
+ # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
+ 
+ # Convenience platforms targets.
+-PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
++PLATS= aix ansi bsd freebsd generic linux pc1000 macosx mingw posix solaris
+ 
+ # What to install.
+ TO_BIN= lua luac
+diff -rN -u old-lua-5.2.0/src/luaconf.h new-lua-5.2.0/src/luaconf.h
+--- old-lua-5.2.0/src/luaconf.h	2013-01-24 16:45:35.250000000 +0700
++++ new-lua-5.2.0/src/luaconf.h	2013-01-24 16:45:35.437500000 +0700
+@@ -49,6 +49,11 @@
+ #define LUA_USE_LONGLONG	/* assume support for long long */
+ #endif
+ 
++#if defined(LUA_USE_PC1000)
++#define LUA_USE_STRTODHEX	/* assume 'strtod' handles hexa formats */
++#define LUA_USE_AFORMAT		/* assume 'printf' handles 'aA' specifiers */
++#endif
++
+ #if defined(LUA_USE_MACOSX)
+ #define LUA_USE_POSIX
+ #define LUA_USE_DLOPEN		/* does not need -ldl */
+diff -rN -u old-lua-5.2.0/src/Makefile new-lua-5.2.0/src/Makefile
+--- old-lua-5.2.0/src/Makefile	2013-01-24 16:45:35.015625000 +0700
++++ new-lua-5.2.0/src/Makefile	2013-01-24 16:45:35.312500000 +0700
+@@ -4,15 +4,15 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= none
++PLAT= pc1000
+ 
+-CC= gcc
+-CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
++CC= ../../../gcc/bin/arm-elf-gcc
++CFLAGS= -mlittle-endian -mcpu=arm9 -B../../../gcc/bin/ -I../../../gcc/include/ -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+ LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
+ LIBS= -lm $(SYSLIBS) $(MYLIBS)
+ 
+-AR= ar rcu
+-RANLIB= ranlib
++AR= ../../../gcc/bin/arm-elf-ar rcu
++RANLIB= ../../../gcc/bin/arm-elf-ar -s
+ RM= rm -f
+ 
+ SYSCFLAGS=
+@@ -26,7 +26,7 @@
+ 
+ # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
+ 
+-PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
++PLATS= aix ansi bsd freebsd generic linux pc1000 macosx mingw posix solaris
+ 
+ LUA_A=	liblua.a
+ CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
+@@ -105,6 +105,9 @@
+ linux:
+ 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_LINUX" SYSLIBS="-Wl,-E -ldl -lreadline -lncurses"
+ 
++pc1000:
++	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_PC1000" SYSLIBS="-Wl,-E -ldl" CFLAGS="-mlittle-endian -mcpu=arm9 -B../../../gcc/bin/ -I../../../gcc/include/ -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)"
++
+ macosx:
+ 	$(MAKE) $(ALL) SYSCFLAGS="-DLUA_USE_MACOSX" SYSLIBS="-lreadline"
+ 
