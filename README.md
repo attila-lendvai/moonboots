@@ -12,7 +12,9 @@ License: BSD 3-clause.
 
 Lua works stable on the two supported platforms ([_vega5000_](#vega5000) and [_pc1000_](#pc1000)), and basic FFI works together with the beginnings of a platform abstraction layer.
 
-The project was written with internal use in mind, so approachability is probably less than ideal. Contribution is welcome.
+The project was initially written as a proof of concept with internal use in mind, so as of now approachability is probably less than ideal.
+
+Contribution is welcome.
 
 ## Implementation policies ##
 

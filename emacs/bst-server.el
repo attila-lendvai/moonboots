@@ -1,5 +1,8 @@
 ;;; -*- mode: emacs-lisp; coding: utf-8 -*-
 
+;;; a control connection from emacs to a running lua vm to remotely initiate the evaluation of lua code in the VM.
+;;; uses json to send/receive messages.
+
 (require 'json)
 
 (defvar bst/port 9999

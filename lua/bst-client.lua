@@ -1,6 +1,7 @@
 -- -*- mode: lua; coding: utf-8 -*-
 
--- a control connection to the emacs side (emacs/bst-server.el). 'bst' is pretty much a random string, only to have something unique to search for.
+-- a control connection to the emacs side (emacs/bst-server.el, uses json), through which you can evaluate lua code on the device or redefine lua functions dynamically. 
+-- for now 'bst' is pretty much a random string, only to have something unique to search for throughout the codebase.
 
 json = require("dkjson")
 

@@ -1,5 +1,7 @@
 -- -*- mode: lua; coding: utf-8 -*-
 
+-- the pc1000 version of the platform abstraction layer
+
 jos = require("justtide.josapi")
 wls = require("justtide.wlsapi")
 

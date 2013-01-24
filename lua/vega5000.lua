@@ -1,5 +1,7 @@
 -- -*- mode: lua; coding: utf-8 -*-
 
+-- the vega5000 version of the platform abstraction layer
+
 ctos = require("castles.ctosapi")
 
 ctos.KBDSetSound(false)

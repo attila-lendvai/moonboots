@@ -1,3 +1,6 @@
+;;; -*- mode: emacs-lisp; coding: utf-8 -*-
+
+;;; random code snippets to help converting stuff in C header files into a Lua friendly format.
 
 (defun lua/trim-string (str)
   (while (string-match "\\`\n+\\|^\\s-+\\|\\s-+$\\|\n+\\'"
@@ -17,10 +20,6 @@
     (insert "\t\t\t// ")))
 
 (global-set-key (kbd "C-\\") 'lua/constant)
-
-
-
-
 
 
 
