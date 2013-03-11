@@ -91,7 +91,7 @@ function printGPRSStatusAt(x, y)
    --platform.display.printXY(x, y, "%s %d.", status, platform.getMonotonicTime())
    local status = ctos.TCP_GPRSStatus()
    local bstStatus
-   if bst.isConnected() then
+   if bst.theConnection and bst.theConnection:isConnected() then
       bstStatus = "C"
    else
       bstStatus = "D"
@@ -134,9 +134,41 @@ mainThread =
       end
 
       displayMenu(
-         {{
-             title = "Connect";
+         {
+          {
+             title = "Serial REPL";
              keyCode = platform.keyboard.key1;
+             trunk = function ()
+                port = ctos.COM1
+                local success, errorMessage = pcall(function ()
+                                                       --ctos.RS232FlushRxBuffer(port)
+                                                       --ctos.RS232FlushTxBuffer(port)
+                                                       --ctos.RS232SetRTS(port, true)
+                                                       --ctos.RS232SetCTS(port, true)
+                                                       ctos.RS232Open(port, 115200, "N", 8, 1)
+                                                    end)
+                if success then
+                   platform.display.clear()
+                   platform.display.printXY(1, 1, "REPL started...")
+                   while ctos.RS232RxReady(port, 1) and
+                         (not platform.keyboard.hasKeyInBuffer() or
+                          platform.keyboard.getKey() ~= platform.keyboard.keyCancel)
+                   do
+                      char = ctos.RS232RxData(port, 1)
+                      if #char ~= 0 then
+                         platform.display.printXY(1, 2, char)
+                         ctos.RS232TxData(port, char.."+")
+                      end
+                      yield()
+                   end
+                else
+                   displayMultilineText(errorMessage)
+                end
+             end;
+          },
+          {
+             title = "Connect";
+             keyCode = platform.keyboard.key2;
              trunk = function ()
                 if not isThreadAlive(gprsConnectThread) then
                    gprsConnectThread = newThread(
@@ -153,34 +185,35 @@ mainThread =
           },
           {
              title = "Disconnect";
-             keyCode = platform.keyboard.key2;
+             keyCode = platform.keyboard.key3;
              trunk = function ()
                 platform.gprs.initiateGPRSDisconnection()
              end;
           },
           {
              title = "bst connect";
-             keyCode = platform.keyboard.key3;
+             keyCode = platform.keyboard.key4;
              trunk = function ()
                 newThread(
                    function ()
-                      bst.ensureConnected()
+                      --bst.IpConnection:new("87.247.13.37", 9999, 30)
+                      bst.SerialConnection:new()
                    end)
              end;
           },
           {
              title = "bst disconnect";
-             keyCode = platform.keyboard.key4;
+             keyCode = platform.keyboard.key5;
              trunk = function ()
                 newThread(
                    function ()
-                      bst.disconnect()
+                      bst.theConnection:disconnect()
                    end)
              end;
           },
           {
              title = "GSM reset";
-             keyCode = platform.keyboard.key5;
+             keyCode = platform.keyboard.key6;
              trunk = function ()
                 ctos.GSMReset()
              end;
