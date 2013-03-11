@@ -134,7 +134,14 @@ platform.serial.connect =
 
 platform.serial.send =
    function (port, data)
+     -- TODO chop to pieces and yield() inbetween
      jos.ComSend(port, tostring(data))
+   end
+
+platform.serial.receive =
+   function (port, length, timeout)
+       -- TODO call with tiny timeout and yield() inbetween
+       return jos.ComRecv(port, length, timeout)
    end
 
 --

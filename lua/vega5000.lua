@@ -104,20 +104,37 @@ platform.keyboard.function4    = ctos.KBD_F4
 -- serial
 --
 platform.serial = {}
-platform.serial.defaultPort = 0
+platform.serial.defaultPort = ctos.COM1
 platform.serial.connect =
    function (port)
      local success, errorMessage = pcall(function ()
-                                            ctos.RS232FlushRxBuffer(port)
-                                            ctos.RS232FlushTxBuffer(port)
-                                            ctos.RS232Open(port, 115200, "E", 8, 1)
+                                            if (port < ctos.COM1 or port > ctos.COM3) then
+                                               errorWithFormat("illegal serial port '%s'", port)
+                                            end
+                                            --ctos.RS232FlushRxBuffer(port)
+                                            --ctos.RS232FlushTxBuffer(port)
+                                            ctos.RS232Open(port, 115200, "N", 8, 1)
                                          end)
      return success, errorMessage
    end
 
+platform.serial.disconnect =
+   function (port)
+     local success, errorMessage = pcall(function ()
+                                            ctos.RS232Close(port)
+                                         end)
+     return success, errorMessage
+   end
+
+-- TODO send/receive should have a timeout and call yield() if the buffer is full/empty...
 platform.serial.send =
    function (port, data)
        ctos.RS232TxData(port, tostring(data))
+   end
+
+platform.serial.receive =
+   function (port, length)
+       return ctos.RS232RxData(port, length)
    end
 
 --
