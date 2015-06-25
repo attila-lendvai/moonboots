@@ -16,6 +16,10 @@ The project was initially written as a proof of concept with internal use in min
 
 Contribution is welcome.
 
+### Partial list of possible improvements ###
+
+Consider using [luabind](https://github.com/luabind/luabind).
+
 ## Implementation policies ##
 
 Regarding the Lua FFI bindings:
@@ -28,11 +32,11 @@ Regarding the Lua FFI bindings:
 
 The makefiles expect the following directories:
 
-* ../dependencies/squish (build-time Lua lib to concatenate many .lua files into one; <code>hg clone http://code.matthewwild.co.uk/squish/</code>)
-* ../$(PLATFORM)/dependencies/lua-5.2.0 (Lua compiled with the platform compiler. The source distribution is available from [Lua.org](http://www.lua.org/download.html). Look for possible diff files in $(PLATFORM)/patches that helps the compilation.)
-* ../$(PLATFORM)/api/include (C header files of the platform API)
-* ../$(PLATFORM)/api/lib (binary link libraries of the platform)
-* ../$(PLATFORM)/gcc/bin/ (a gcc from the platform toolchain, can be copied from the platform SDK, but take care of multiple incompatible cygwin.dll's lying around)
+* <code>../dependencies/squish</code> (build-time Lua lib to concatenate many .lua files into one; <code>hg clone http://code.matthewwild.co.uk/squish/</code>)
+* <code>../$(PLATFORM)/dependencies/lua-5.2.0</code> (Lua compiled with the platform compiler. The source distribution is available from [Lua.org](http://www.lua.org/download.html). Look for possible diff files in $(PLATFORM)/patches that helps the compilation.)
+* <code>../$(PLATFORM)/api/include</code> (C header files of the platform API)
+* <code>../$(PLATFORM)/api/lib</code> (binary link libraries of the platform)
+* <code>../$(PLATFORM)/gcc/bin/</code> (a gcc from the platform toolchain, can be copied from the platform SDK, but take care of multiple incompatible cygwin.dll's lying around)
 
 ## Supported hardware platforms ##
 
