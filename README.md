@@ -20,7 +20,7 @@ Contribution is welcome.
 
 It's possible to connect the Lua runtime with Emacs either using the serial port or using TCP/IP (e.g. mobile internet). You can find the [Emacs side](https://github.com/attila-lendvai/moonboots/blob/master/emacs/bst-server.el) and the [Lua side](https://github.com/attila-lendvai/moonboots/blob/master/emacs/bst-server.el) in the repo.
 
-Once the connection has been successfully established, it becomes possible to evaluate Lua expressions from inside your Emacs with a keyboard shortcut (i.e. you can redefine Lua functions on the fly while your code is running on the PoS terminal). This greatly improves development speed compared to working in C.
+Once the connection has been successfully established, it becomes possible to evaluate Lua expressions from inside your Emacs with a keyboard shortcut (i.e. you can **remotely redefine Lua functions on the fly** while your code is running on the PoS terminal). This greatly improves development speed compared to working in C.
 
 ### Partial list of possible improvements ###
 
